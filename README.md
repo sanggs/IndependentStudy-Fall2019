@@ -1,5 +1,6 @@
 # IndependentStudy-Fall2019
-##Projective Dynamics Simulator
+
+## Projective Dynamics Simulator
 1. Command to run: python3 LatticeMesh.py
 2. Particle positions after every frame are written into 3DPoints.csv
 3. To generate Pixar-USD file from this 3DPoints.csv
