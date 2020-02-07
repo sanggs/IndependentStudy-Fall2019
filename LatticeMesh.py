@@ -108,13 +108,32 @@ class LatticeMesh(FiniteElementMesh):
             pos[p] = self.particles[p] + effectiveTime * self.rightHandleVelocity
             vel[p] = self.rightHandleVelocity
 
+    def sortParticles(self):
+        yx = zip(self.particleIndex, self.particles)
+        yx = sorted(yx)
+        self.sortedParticles = [x for y,x in yx]
+        print(self.sortedParticles)
+        self.sortedIndex = [y for y,x in yx]
+
 if __name__ == '__main__':
     lm = LatticeMesh()
     fem = FiniteElementMesh(density=1.e2, mu=1., lmbda=4., rayleighCoefficient=.05, frames=50, frameDt=0.1)
+    #lm.sortParticles()
     fem.setParticles(lm.particles, lm.width, lm.height, lm.depth, lm.particleIndex)
     fem.setMeshElements(lm.meshElements)
     fem.setHandles(lm.leftHandleIndices, lm.rightHandleIndices)
     fem.registerLatticeMeshObject(lm)
     fem.initialiseUndeformedConfiguration()
+    #testcase
+    '''
+    x = np.random.rand(len(lm.particles), 3)
+    y1 = np.zeros(shape=[len(lm.particles), 3], dtype=np.float32)
+    y1 = fem.multiplyWithStiffnessMatrixPD(x, y1)
+    y2 = np.zeros(shape=[len(lm.particles), 3], dtype=np.float32)
+    y2 = fem.multiplyWithLHSMatrix(x, y2)
+    for i in range(0, len(lm.particles)):
+        if y1[i][0] != y2[i][0]:
+            print(str(y1[i][0]) + " " + str(y2[i][0]))
+    '''
     for i in range(1, 50):
         fem.simulateFrame(i)

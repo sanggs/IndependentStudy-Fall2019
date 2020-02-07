@@ -202,7 +202,6 @@ if __name__ == "__main__":
     nodeType = torch.zeros((gridWidth, gridWidth))
     latticeShape(nodeType, gridWidth)
     print(nodeType)
-    #b = torch.from_numpy(a)
     solver = LaplacianSolver(lattice, nodeType, gridWidth)
     solver.sampleFunction()
     solver.jacobiSolver()
