@@ -67,7 +67,7 @@ class FiniteElementMesh:
             for particle in self.meshElements[i]:
                 self.particleMass[particle] += (1.0/5.0) * elementMass
         self.latticeMeshObject.writeToFile(0, self.particles)
-        self.prepareLHS()
+        self.constructLHSMatrix()
 
     def resetConstrainedParticles(self, v, value):
         v = self.latticeMeshObject.resetConstrainedParticles(v, value)
@@ -248,6 +248,29 @@ class FiniteElementMesh:
         for i in range(0, self.numParticles):
             print(self.stencilMatrix[i])
 
+    def constructLHSMatrix(self):
+        self.LHSMatrix = np.zeros(shape=[self.numParticles,self.numParticles], dtype=np.float32)
+        for i in range(0, self.width+1):
+            for j in range(0, self.height+1):
+                for k in range(0, self.depth+1):
+                    pIndex = self.gridToParticleID(i, j, k)
+                    p = self.findParticlePos(pIndex)
+                    for v in range(0,1):
+                        Ai = np.zeros(shape=[self.numParticles, 3], dtype=np.float32)
+                        output = np.zeros(shape=[self.numParticles, 3], dtype=np.float32)
+                        Ai[p][v] = 1.0
+                        #Now multiplyWithStiffnessMatrixPD
+                        output = self.multiplyWithStiffnessMatrixPD(Ai, output)
+                        #Collect Stencil weights
+                        for x in range(-1, 2):
+                            for y in range(-1, 2):
+                                for z in range(-1, 2):
+                                    pIndex1 = self.gridToParticleID(i+x, j+y, k+z)
+                                    if pIndex1 >= 0 and pIndex1 < self.numParticles:
+                                        p1 = self.findParticlePos(pIndex1)
+                                        self.LHSMatrix[p][p1] = output[p1][v]
+        for i in range(0, self.numParticles):
+            print(self.LHSMatrix[i])
 
     def findParticlePos(self, pIndex):
         for i in range(0, self.numParticles):
@@ -275,9 +298,14 @@ class FiniteElementMesh:
                         output[currentP][axis] = newParticleVal
         return output
 
+    def multiplyWithLHSMatrix(self, x, y):
+        y += np.matmul(self.LHSMatrix, x)
+        return y
+
     def multiplyWithLHSPD(self, x, y):
-        y = self.multiplyWithStencil(x, y)
-        #y = self.multiplyWithStiffnessMatrixPD(x, y)
+        y = self.multiplyWithLHSMatrix(x, y)
+        # y = self.multiplyWithStencil(x, y)
+        # y = self.multiplyWithStiffnessMatrixPD(x, y)
         return y
 
     def multiplyWithRHSPD(self):
