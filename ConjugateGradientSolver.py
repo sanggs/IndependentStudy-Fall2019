@@ -12,26 +12,11 @@ class CGSolver:
         self.minConvergenceNorm = torch.tensor(minConvergenceNorm, dtype = torch.float32)
         self.femObject = femObject
 
-    # def multiply(self, p, q):
-    #     x = p.numpy()
-    #     q = q.numpy()
-    #     oneOverDtSquared = 1.0/(self.femObject.stepDt * self.femObject.stepDt)
-    #     for i in range(0, self.femObject.numParticles):
-    #         q[i] = self.femObject.particleMass[i] * oneOverDtSquared * x[i]
-    #     # scale = 1.0 + self.femObject.rayleighCoefficient/self.femObject.stepDt
-    #     # for i in range(0, self.femObject.numParticles):
-    #     #     q[i] = 0.0
-    #     q = torch.from_numpy(self.femObject.addProductWithStiffnessMatrixPD(x, q, 1.0))
-    #     return q
-
     def multiplyWithA(self, p, q):
         x = p.numpy()
         q = q.numpy()
         q[:] = 0.0
-        #y = np.zeros(shape=[self.femObject.numParticles, 1], dtype=np.float32)
         q = self.femObject.multiplyWithLHSPD(x, q)
-        # q[:, 1] = self.femObject.multiplyWithLHSPD(x[:, 1], q[:, 1])
-        # q[:, 2] = self.femObject.multiplyWithLHSPD(x[:, 2], q[:, 2])
         q = torch.from_numpy(q)
         return q
 

@@ -308,11 +308,13 @@ class FiniteElementMesh:
         # y = self.multiplyWithStiffnessMatrixPD(x, y)
         return y
 
+    '''
     def multiplyWithRHSPD(self):
         rhs = self.RHS
         p = self.minRMatrix.reshape((3*self.numMeshElements, 3))
         y = np.matmul(rhs, p)
         return y
+    '''
 
     def solveGlobalStep(self):
         print("Solving global step")

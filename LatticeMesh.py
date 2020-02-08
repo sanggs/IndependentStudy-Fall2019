@@ -19,14 +19,6 @@ class LatticeMesh(FiniteElementMesh):
         #get particles for activeCells
         self.activeParticles = []
         self.particles = []
-        # for cell in self.activeCells:
-        #     for i in range(cell[0], cell[0]+2):
-        #         for j in range(cell[1], cell[1]+2):
-        #             for k in range(cell[2], cell[2]+2):
-        #                 insertCell = dict(particle=[i, j, k], numParticle=len(self.particles))
-        #                 if not self.findParticle(self.activeParticles, insertCell):
-        #                     self.activeParticles.append(insertCell)
-        #                     self.particles += [[i*self.gridDx, j*self.gridDx, k*self.gridDx]]
         self.particleIndex = []
         for cell in self.activeCells:
             for i in range(cell[0], cell[0]+2):

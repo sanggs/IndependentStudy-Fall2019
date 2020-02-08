@@ -12,7 +12,7 @@ using namespace std;
 void readPoints(int size, vector< vector<float> > &points)
 {
     fstream fin;
-    fin.open("../../../../3DPoints.csv", ios::in);
+    fin.open("../../../3DPoints.csv", ios::in);
     
     int count = 0;
     while (fin.good()) {
@@ -63,6 +63,7 @@ int main(int argc, char *argv[]) {
         
         if(t == 0) {
             simulationMesh.initialize(gridPos, "result.usda");
+            std::cout << "Step 0 done" << std::endl;
             simulationMesh.writeFrame(t);
         }
         else {
