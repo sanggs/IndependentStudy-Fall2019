@@ -1,0 +1,28 @@
+{
+    "width": 4,
+    "height": 4,
+    "depth": 4,
+    "gridDx": 0.5,
+    "density": "1.e2",
+    "mu": 1.0,
+    "lmbda": 4.0,
+    "rayleighCoefficient": 0.05,
+    "frames": 50,
+    "frameDt": 0.1,
+    "subSteps": 1,
+    "leftHandleVelocity": [
+        {
+            "x": -0.5,
+            "y": 0,
+            "z": 0
+        }
+    ],
+    "rightHandleVelocity": [
+        {
+            "x": 0.5,
+            "y": 0,
+            "z": 0
+        }
+    ],
+    "targetFile": "3DPoints.csv"
+}

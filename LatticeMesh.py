@@ -1,15 +1,18 @@
 import numpy as np
 import torch
 import sys
+import json
 
 from FiniteElementMesh import FiniteElementMesh
+from ProjectiveDynamicsSolver import ProjectiveDynamicsSolver
 
 class LatticeMesh(FiniteElementMesh):
-    def __init__(self):
-        self.width = 4
-        self.height = 4
-        self.depth = 4
-        self.gridDx = 0.5
+    def __init__(self, simProperties):
+        self.width = simProperties["width"]
+        self.height = simProperties["height"]
+        self.depth = simProperties["depth"]
+        self.gridDx = simProperties["gridDx"]
+        self.fileName = simProperties["targetFile"]
         self.activeCells = []
         #populate active cells
         for i in range(0, self.width):
@@ -61,14 +64,22 @@ class LatticeMesh(FiniteElementMesh):
             elif cell[0] == self.width:
                 self.rightHandleIndices.append(entry['numParticle'])
         #set left handle and right handle velocity
-        self.leftHandleVelocity = np.array([-.5, 0.0, 0.0], dtype = np.float32)
-        self.rightHandleVelocity = np.array([.5, 0.0, 0.0], dtype = np.float32)
+        self.leftHandleVelocity = np.zeros(3)
+        for v in simProperties["leftHandleVelocity"]:
+            self.leftHandleVelocity[0] = v["x"]
+            self.leftHandleVelocity[1] = v["y"]
+            self.leftHandleVelocity[2] = v["z"]
+        self.rightHandleVelocity = np.zeros(3)
+        for v in simProperties["rightHandleVelocity"]:
+            self.rightHandleVelocity[0] = v["x"]
+            self.rightHandleVelocity[1] = v["y"]
+            self.rightHandleVelocity[2] = v["z"]
 
     def writeToFile(self, i, pos):
         if i == 0:
-            f = open("3DPoints.csv", "w")
+            f = open(self.fileName, "w")
         else:
-            f = open("3DPoints.csv", "a")
+            f = open(self.fileName, "a")
         np.savetxt(f, pos, delimiter=',')
         f.close()
 
@@ -108,14 +119,20 @@ class LatticeMesh(FiniteElementMesh):
         self.sortedIndex = [y for y,x in yx]
 
 if __name__ == '__main__':
-    lm = LatticeMesh()
+    simProperties = None
+    with open('properties.json') as json_file:
+        simProperties = json.load(json_file)
+    lm = LatticeMesh(simProperties)
     fem = FiniteElementMesh(density=1.e2, mu=1., lmbda=4., rayleighCoefficient=.05, frames=50, frameDt=0.1)
     #lm.sortParticles()
-    fem.setParticles(lm.particles, lm.width, lm.height, lm.depth, lm.particleIndex)
-    fem.setMeshElements(lm.meshElements)
-    fem.setHandles(lm.leftHandleIndices, lm.rightHandleIndices)
-    fem.registerLatticeMeshObject(lm)
-    fem.initialiseUndeformedConfiguration()
+    # fem.setParticles(lm.particles, lm.width, lm.height, lm.depth, lm.particleIndex)
+    # fem.setMeshElements(lm.meshElements)
+    # fem.setHandles(lm.leftHandleIndices, lm.rightHandleIndices)
+    # fem.registerLatticeMeshObject(lm)
+    # fem.initialiseUndeformedConfiguration()
+
+    #ProjectiveDynamicsSolver
+    pdSolver = ProjectiveDynamicsSolver(simProperties, lm.particles, lm.particleIndex, lm.meshElements, lm)
     #testcase
     '''
     x = np.random.rand(len(lm.particles), 3)
