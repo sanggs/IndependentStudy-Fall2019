@@ -230,7 +230,7 @@ class FiniteElementMesh:
             for j in range(0, self.height+1):
                 for k in range(0, self.depth+1):
                     pIndex = self.gridToParticleID(i, j, k)
-                    p = self.findParticlePos(pIndex)
+                    p = self.getParticleIndex(pIndex)
                     for v in range(0,1):
                         Ai = np.zeros(shape=[self.numParticles, 3], dtype=np.float32)
                         output = np.zeros(shape=[self.numParticles, 3], dtype=np.float32)
@@ -243,7 +243,7 @@ class FiniteElementMesh:
                                 for z in range(-1, 2):
                                     pIndex1 = self.gridToParticleID(i+x, j+y, k+z)
                                     if pIndex1 >= 0 and pIndex1 < self.numParticles:
-                                        p1 = self.findParticlePos(pIndex1)
+                                        p1 = self.getParticleIndex(pIndex1)
                                         self.stencilMatrix[p][x+1][y+1][z+1] = output[p1][v]
         for i in range(0, self.numParticles):
             print(self.stencilMatrix[i])
@@ -254,7 +254,7 @@ class FiniteElementMesh:
             for j in range(0, self.height+1):
                 for k in range(0, self.depth+1):
                     pIndex = self.gridToParticleID(i, j, k)
-                    p = self.findParticlePos(pIndex)
+                    p = self.getParticleIndex(pIndex)
                     for v in range(0,1):
                         Ai = np.zeros(shape=[self.numParticles, 3], dtype=np.float32)
                         output = np.zeros(shape=[self.numParticles, 3], dtype=np.float32)
@@ -267,15 +267,17 @@ class FiniteElementMesh:
                                 for z in range(-1, 2):
                                     pIndex1 = self.gridToParticleID(i+x, j+y, k+z)
                                     if pIndex1 >= 0 and pIndex1 < self.numParticles:
-                                        p1 = self.findParticlePos(pIndex1)
+                                        p1 = self.getParticleIndex(pIndex1)
                                         self.LHSMatrix[p][p1] = output[p1][v]
         for i in range(0, self.numParticles):
             print(self.LHSMatrix[i])
 
-    def findParticlePos(self, pIndex):
-        for i in range(0, self.numParticles):
-            if self.particleIndex[i] == pIndex:
-                return i
+    def getParticleIndex(self, pKey):
+        try:
+            return self.particleIndex[pKey]
+        except:
+            print("ERROR: PARTICLE INDEX NOT FOUND")
+            sys.exit()
 
     def gridToParticleID(self, i, j , k):
         return ((i) * (self.height+1) * (self.depth+1)) + ((j) * (self.depth+1)) + k
@@ -286,14 +288,14 @@ class FiniteElementMesh:
                 for j in range(0, self.height+1):
                     for k in range(0, self.depth+1):
                         p = self.gridToParticleID(i, j, k)
-                        currentP = self.findParticlePos(p)
+                        currentP = self.getParticleIndex(p)
                         newParticleVal = 0.0
                         for x in range(-1, 2):
                             for y in range(-1, 2):
                                 for z in range(-1, 2):
                                     pIndex1 = self.gridToParticleID(i+x, j+y, k+z)
                                     if pIndex1 >= 0 and pIndex1 < self.numParticles:
-                                        p1 = self.findParticlePos(pIndex1)
+                                        p1 = self.getParticleIndex(pIndex1)
                                         newParticleVal += self.stencilMatrix[currentP][x+1][y+1][z+1] * input[p1][axis]
                         output[currentP][axis] = newParticleVal
         return output

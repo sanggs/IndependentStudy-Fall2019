@@ -20,18 +20,26 @@ class LatticeMesh(FiniteElementMesh):
                 for k in range(0, self.depth):
                     self.activeCells += [[i, j, k]]
         #get particles for activeCells
-        self.activeParticles = []
+        self.activeParticles = {}
         self.particles = []
-        self.particleIndex = []
+        self.particleIndex = {}
+        #set left and right handles
+        self.leftHandleIndices = []
+        self.rightHandleIndices = []
         for cell in self.activeCells:
             for i in range(cell[0], cell[0]+2):
                 for j in range(cell[1], cell[1]+2):
                     for k in range(cell[2], cell[2]+2):
-                        insertCell = dict(particle=[i, j, k], numParticle=len(self.particles))
-                        if not self.findParticle(self.activeParticles, insertCell):
-                            self.activeParticles.append(insertCell)
+                        pKey = tuple([i, j, k]) # dict(particle=[i, j, k], numParticle=len(self.particles))
+                        if not self.findParticle(self.activeParticles, pKey):
+                            index = len(self.particles)
+                            self.activeParticles[pKey] = index
                             self.particles += [[i*self.gridDx, j*self.gridDx, k*self.gridDx]]
-                            self.particleIndex += [(i * 25) + (j * 5) + k]
+                            self.particleIndex[((i * (self.height + 1) * (self.depth + 1)) + (j * (self.depth + 1)) + k)] = index
+                            if i == 0:
+                                self.leftHandleIndices.append(index)
+                            elif i == self.width:
+                                self.rightHandleIndices.append(index)
         #initialise mesh elements
         #populate mesh elements
         self.meshElements = []
@@ -40,8 +48,8 @@ class LatticeMesh(FiniteElementMesh):
             for i in range(0, 2):
                 for j in range(0, 2):
                     for k in range(0, 2):
-                        insertCell = [cell[0]+i, cell[1]+j, cell[2]+k]
-                        pNum = self.getParticle(self.activeParticles, insertCell)
+                        pKey = tuple([cell[0]+i, cell[1]+j, cell[2]+k])
+                        pNum = self.getParticle(self.activeParticles, pKey)
                         if pNum is None:
                             print("ERROR: PARTICLE NOT FOUND")
                             sys.exit()
@@ -54,15 +62,6 @@ class LatticeMesh(FiniteElementMesh):
             self.meshElements.append([pCell[0], pCell[7], pCell[2], pCell[3]])
             self.meshElements.append([pCell[0], pCell[6], pCell[2], pCell[7]])
 
-        #set left and right handles
-        self.leftHandleIndices = []
-        self.rightHandleIndices = []
-        for entry in self.activeParticles:
-            cell = entry['particle']
-            if cell[0] == 0:
-                self.leftHandleIndices.append(entry['numParticle'])
-            elif cell[0] == self.width:
-                self.rightHandleIndices.append(entry['numParticle'])
         #set left handle and right handle velocity
         self.leftHandleVelocity = np.zeros(3)
         for v in simProperties["leftHandleVelocity"]:
@@ -83,17 +82,18 @@ class LatticeMesh(FiniteElementMesh):
         np.savetxt(f, pos, delimiter=',')
         f.close()
 
-    def findParticle(self, pList, p):
-        for item in pList:
-            if item['particle'] == p['particle']:
-                return True
-        return False
+    def findParticle(self, pDict, pKey):
+        try:
+            ans = pDict[pKey]
+            return True
+        except:
+            return False
 
-    def getParticle(self, pList, p):
-        for item in pList:
-            if item['particle'] == p:
-                return item['numParticle']
-        return None
+    def getParticle(self, pDict, pKey):
+        try:
+            return pDict[pKey]
+        except:
+            return None
 
     def resetConstrainedParticles(self, x, value):
         for index in self.leftHandleIndices:
@@ -125,14 +125,14 @@ if __name__ == '__main__':
     lm = LatticeMesh(simProperties)
     fem = FiniteElementMesh(density=1.e2, mu=1., lmbda=4., rayleighCoefficient=.05, frames=50, frameDt=0.1)
     #lm.sortParticles()
-    # fem.setParticles(lm.particles, lm.width, lm.height, lm.depth, lm.particleIndex)
-    # fem.setMeshElements(lm.meshElements)
-    # fem.setHandles(lm.leftHandleIndices, lm.rightHandleIndices)
-    # fem.registerLatticeMeshObject(lm)
-    # fem.initialiseUndeformedConfiguration()
+    fem.setParticles(lm.particles, lm.width, lm.height, lm.depth, lm.particleIndex)
+    fem.setMeshElements(lm.meshElements)
+    fem.setHandles(lm.leftHandleIndices, lm.rightHandleIndices)
+    fem.registerLatticeMeshObject(lm)
+    fem.initialiseUndeformedConfiguration()
 
     #ProjectiveDynamicsSolver
-    pdSolver = ProjectiveDynamicsSolver(simProperties, lm.particles, lm.particleIndex, lm.meshElements, lm)
+    # pdSolver = ProjectiveDynamicsSolver(simProperties, lm.particles, lm.particleIndex, lm.meshElements, lm)
     #testcase
     '''
     x = np.random.rand(len(lm.particles), 3)

@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     //Populate points in USD
     //const int latticeSize = 10;
     LatticeMesh<float> simulationMesh;
-    simulationMesh.m_cellSize = { 4, 4, 4};
+    simulationMesh.m_cellSize = { 5, 4, 3};
     simulationMesh.m_gridDX = 0.5;
     
     int totalFrames = numLines/((simulationMesh.m_cellSize[0]+1) *

@@ -41,16 +41,19 @@ class ProjectiveDynamicsSolver:
         if self.particles is None or self.meshElements is None:
             print("Particles and meshElements not set")
             sys.exit()#sanity check for particles and meshElements
-        # Matrix needed to compute dM from X
+        # Builder Matrix: needed to compute dM from X
         builder = torch.zeros(size=[4,3], dtype = torch.float32)
         builder[1:4, :] = torch.eye(3)
         builder[0, :] = -1 * torch.ones(3)
         #Velocity
         self.particleVelocity = torch.zeros([self.numParticles, 3], dtype=torch.float32)
+        #dM
         dM = torch.zeros(size = [self.numMeshElements, 3, 3], dtype=torch.float32)
         X = torch.zeros(size=[self.numMeshElements, 3, 4], dtype = torch.float32)
         self.dMInverse = torch.zeros([self.numMeshElements, 3, 3], dtype=torch.float32)
+        #Volume
         self.restVolume = torch.zeros(self.numMeshElements, dtype=torch.float32)
+        #Mass
         self.particleMass = torch.zeros(self.numParticles, dtype=torch.float32)
         for i in range(0, self.numMeshElements):
             #we know meshElements will have 4 elements
