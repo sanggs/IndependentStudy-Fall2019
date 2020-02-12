@@ -132,7 +132,9 @@ if __name__ == '__main__':
     fem.initialiseUndeformedConfiguration()
 
     #ProjectiveDynamicsSolver
-    # pdSolver = ProjectiveDynamicsSolver(simProperties, lm.particles, lm.particleIndex, lm.meshElements, lm)
+    print("pd")
+    pdSolver = ProjectiveDynamicsSolver(simProperties, lm.particles, lm.particleIndex, lm.meshElements, lm)
+    sys.exit()
     #testcase
     '''
     x = np.random.rand(len(lm.particles), 3)

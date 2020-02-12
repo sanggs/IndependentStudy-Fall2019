@@ -28,7 +28,8 @@ class ProjectiveDynamicsSolver:
     def setParticles(self, particles, particleIndex):
         self.particles = torch.tensor(particles, dtype=torch.float32)
         self.numParticles = len(particles)
-        self.particleIndex = torch.tensor(particleIndex, dtype=torch.float32)
+        print(self.particles.shape)
+        self.particleIndex = torch.utils.data.DataLoader(particleIndex)
 
     def setMeshElements(self, meshElements):
         self.meshElements = torch.tensor(meshElements, dtype = torch.int64)
@@ -62,15 +63,37 @@ class ProjectiveDynamicsSolver:
         dM = torch.matmul(X, builder)
         self.dMInverse = torch.inverse(dM)
         self.restVolume = 0.5 * torch.det(dM)
-            #print(self.restVolume[i])
+        #Compute Gtranspose
+        self.GTranspose = torch.matmul(builder, self.dMInverse)
+        #Compute particle mass
         for i in range(0, self.numMeshElements):
             elementMass = self.density * self.restVolume[i]
             for particle in self.meshElements[i]:
                 self.particleMass[particle] += (1.0/5.0) * elementMass
         self.latticeMeshObject.writeToFile(0, self.particles)
         #Extract stencil
-        #self.constructLHSMatrix()
+        self.precomputeStencilMatrix()
 
-    def probeStencilMatrix(self):
-        
+    def precomputeStencilMatrix(self):
+        print(self.particleIndex.dataset)
+        self.stencil = torch.zeros(self.numParticles, self.numParticles)
+        G = torch.transpose(self.GTranspose, 1, 2)
+        GtG = torch.matmul(self.GTranspose, G)
+        for i in range(0, self.numMeshElements):
+            w = -2 * self.mu * self.restVolume[i] * GtG[i]
+            for row in range(0, 4):
+                # for col in range(row, 4):
+                #     print(w[row][col])
+                pRow = self.meshElements[i][row]
+                for col in range(row, 4):
+                    pCol = self.meshElements[i][col]
+                    self.stencil[pRow][pCol] += w[row][col]
+                    self.stencil[pCol][pRow] += w[row][col]
+        return
+
+    
+
+    def pdSimulation(self):
+        self.solveLocalStep()
+        self.solveGlobalStep()
         return

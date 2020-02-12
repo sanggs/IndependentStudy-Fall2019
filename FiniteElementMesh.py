@@ -269,8 +269,8 @@ class FiniteElementMesh:
                                     if pIndex1 >= 0 and pIndex1 < self.numParticles:
                                         p1 = self.getParticleIndex(pIndex1)
                                         self.LHSMatrix[p][p1] = output[p1][v]
-        for i in range(0, self.numParticles):
-            print(self.LHSMatrix[i])
+        # for i in range(0, self.numParticles):
+        #     print(self.LHSMatrix[i])
 
     def getParticleIndex(self, pKey):
         try:
