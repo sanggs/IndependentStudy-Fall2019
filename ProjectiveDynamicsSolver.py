@@ -87,8 +87,11 @@ class ProjectiveDynamicsSolver:
                 pRow = self.meshElements[i][row]
                 for col in range(row, 4):
                     pCol = self.meshElements[i][col]
-                    self.stencil[pRow][pCol] += w[row][col]
-                    self.stencil[pCol][pRow] += w[col][row]
+                    if (pRow==pCol):
+                        self.stencil[pRow][pCol] += w[row][col]
+                    else:
+                        self.stencil[pRow][pCol] += w[row][col]
+                        self.stencil[pCol][pRow] += w[col][row]
         return
 
     def getBuilderTensor(self):
