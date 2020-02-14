@@ -63,12 +63,12 @@ class LatticeMesh(FiniteElementMesh):
             self.meshElements.append([pCell[0], pCell[6], pCell[2], pCell[7]])
 
         #set left handle and right handle velocity
-        self.leftHandleVelocity = np.zeros(3)
+        self.leftHandleVelocity = torch.zeros(3)
         for v in simProperties["leftHandleVelocity"]:
             self.leftHandleVelocity[0] = v["x"]
             self.leftHandleVelocity[1] = v["y"]
             self.leftHandleVelocity[2] = v["z"]
-        self.rightHandleVelocity = np.zeros(3)
+        self.rightHandleVelocity = torch.zeros(3)
         for v in simProperties["rightHandleVelocity"]:
             self.rightHandleVelocity[0] = v["x"]
             self.rightHandleVelocity[1] = v["y"]
@@ -105,10 +105,10 @@ class LatticeMesh(FiniteElementMesh):
     def setBoundaryConditions(self, pos, vel, stepEndTime):
         effectiveTime = min(stepEndTime, 1.0)
         for p in self.leftHandleIndices:
-            pos[p] = self.particles[p] + effectiveTime * self.leftHandleVelocity
+            pos[p] = torch.tensor(self.particles[p], dtype=torch.float32) + effectiveTime * self.leftHandleVelocity
             vel[p] = self.leftHandleVelocity
         for p in self.rightHandleIndices:
-            pos[p] = self.particles[p] + effectiveTime * self.rightHandleVelocity
+            pos[p] = torch.tensor(self.particles[p], dtype=torch.float32) + effectiveTime * self.rightHandleVelocity
             vel[p] = self.rightHandleVelocity
 
     def sortParticles(self):
@@ -125,16 +125,16 @@ if __name__ == '__main__':
     lm = LatticeMesh(simProperties)
     fem = FiniteElementMesh(density=1.e2, mu=1., lmbda=4., rayleighCoefficient=.05, frames=50, frameDt=0.1)
     #lm.sortParticles()
-    fem.setParticles(lm.particles, lm.width, lm.height, lm.depth, lm.particleIndex)
-    fem.setMeshElements(lm.meshElements)
-    fem.setHandles(lm.leftHandleIndices, lm.rightHandleIndices)
-    fem.registerLatticeMeshObject(lm)
-    fem.initialiseUndeformedConfiguration()
+    # fem.setParticles(lm.particles, lm.width, lm.height, lm.depth, lm.particleIndex)
+    # fem.setMeshElements(lm.meshElements)
+    # fem.setHandles(lm.leftHandleIndices, lm.rightHandleIndices)
+    # fem.registerLatticeMeshObject(lm)
+    # fem.initialiseUndeformedConfiguration()
 
     #ProjectiveDynamicsSolver
     print("pd")
     pdSolver = ProjectiveDynamicsSolver(simProperties, lm.particles, lm.particleIndex, lm.meshElements, lm)
-    sys.exit()
+
     #testcase
     '''
     x = np.random.rand(len(lm.particles), 3)
@@ -147,4 +147,4 @@ if __name__ == '__main__':
             print(str(y1[i][0]) + " " + str(y2[i][0]))
     '''
     for i in range(1, 50):
-        fem.simulateFrame(i)
+        pdSolver.simulateFrame(i)

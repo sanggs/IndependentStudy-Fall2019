@@ -3,29 +3,33 @@ import numpy as np
 
 class CGSolver:
     def __init__(self, particles, rhs, q, s, r, numIteration, minConvergenceNorm, femObject):
-        self.x = torch.from_numpy(particles)
-        self.rhs = torch.from_numpy(rhs)
-        self.q = torch.from_numpy(q)
-        self.s = torch.from_numpy(s)
-        self.r = torch.from_numpy(r)
+        self.x = particles
+        self.rhs = rhs
+        self.q = q
+        self.s = s
+        self.r = r
+        # self.x = torch.from_numpy(particles)
+        # self.rhs = torch.from_numpy(rhs)
+        # self.q = torch.from_numpy(q)
+        # self.s = torch.from_numpy(s)
+        # self.r = torch.from_numpy(r)
         self.maxIterations = numIteration
         self.minConvergenceNorm = torch.tensor(minConvergenceNorm, dtype = torch.float32)
         self.femObject = femObject
 
     def multiplyWithA(self, p, q):
-        x = p.numpy()
-        q = q.numpy()
+        x = p
+        q = q
         q[:] = 0.0
-        q = self.femObject.multiplyWithLHSPD(x, q)
-        q = torch.from_numpy(q)
+        q = self.femObject.multiplyWithStencil(x, q)
         return q
 
     def projectToZero(self, v):
-        v = torch.from_numpy(self.femObject.resetConstrainedParticles(v.numpy(), 0.0))
+        v = self.femObject.resetConstrainedParticles(v, 0.0)
         return v
 
     def getSolution(self):
-        return self.x.numpy()
+        return self.x
 
     def solve(self):
         self.q = self.multiplyWithA(self.x, self.q)
