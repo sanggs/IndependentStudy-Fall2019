@@ -16,6 +16,7 @@ class ProjectiveDynamicsSolver:
         self.width = simProperties["width"]
         self.height = simProperties["height"]
         self.depth = simProperties["depth"]
+        self.dimension = simProperties["dimension"]
         self.particleMass = None
         self.particleVelocity = None
         self.dMInverse = None
@@ -28,26 +29,30 @@ class ProjectiveDynamicsSolver:
         self.initialiseUndeformedConfiguration()
 
     def setParticles(self, particles, particleIndex):
-        self.particles = torch.tensor(particles, dtype=torch.float32)
-        self.numParticles = len(particles)
+        self.particles = particles
+        self.numParticles = particles.shape[0]*particles.shape[1]*particles.shape[2]
         print(self.particles.shape)
         self.particleIndex = torch.utils.data.DataLoader(particleIndex)
 
     def setMeshElements(self, meshElements):
-        self.meshElements = torch.tensor(meshElements, dtype = torch.int64)
-        self.numMeshElements = len(meshElements)
+        self.meshElements = meshElements
+        self.numMeshElements = self.meshElements.shape[0]
 
     def registerLatticeMeshObject(self, lm):
         self.latticeMeshObject = lm
+
+    def getBuilderTensor(self):
+        builder = torch.zeros(size=[4,3], dtype = torch.float32)
+        builder[1:4, :] = torch.eye(3)
+        builder[0, :] = -1 * torch.ones(3)
+        return builder
 
     def initialiseUndeformedConfiguration(self):
         if self.particles is None or self.meshElements is None:
             print("Particles and meshElements not set")
             sys.exit()#sanity check for particles and meshElements
         # Builder Matrix: needed to compute dM from X
-        builder = torch.zeros(size=[4,3], dtype = torch.float32)
-        builder[1:4, :] = torch.eye(3)
-        builder[0, :] = -1 * torch.ones(3)
+        builder = self.getBuilderTensor()
         #Velocity
         self.particleVelocity = torch.zeros([self.numParticles, 3], dtype=torch.float32)
         #dM
@@ -60,8 +65,8 @@ class ProjectiveDynamicsSolver:
         self.particleMass = torch.zeros(self.numParticles, dtype=torch.float32)
         for i in range(0, self.numMeshElements):
             #we know meshElements will have 4 elements
-            for j in range(0, 4):
-                X[i, :, j] = self.particles[self.meshElements[i][j]]
+            for j in range(0, self.dimension+1):
+                X[i, :, j] = self.particles[self.meshElements[i][j][0], self.meshElements[i][j][1], self.meshElements[i][j][2]]
         dM = torch.matmul(X, builder)
         self.dMInverse = torch.inverse(dM)
         self.restVolume = 0.5 * torch.det(dM)
@@ -77,38 +82,41 @@ class ProjectiveDynamicsSolver:
         self.precomputeStencilMatrix()
 
     def precomputeStencilMatrix(self):
-        print(self.particleIndex.dataset)
-        self.stencil = torch.zeros(self.numParticles, self.numParticles)
+        #print(self.particleIndex.dataset)
+        self.stencil = torch.zeros(self.width+1, self.height+1, self.depth+1, self.dimension, self.dimension, self.dimension)
         G = torch.transpose(self.GTranspose, 1, 2)
         GtG = torch.matmul(self.GTranspose, G)
         for i in range(0, self.numMeshElements):
             w = 2 * self.mu * self.restVolume[i] * GtG[i]
-            for row in range(0, 4):
-                pRow = self.meshElements[i][row]
-                for col in range(row, 4):
-                    pCol = self.meshElements[i][col]
-                    if (pRow==pCol):
-                        self.stencil[pRow][pCol] += w[row][col]
-                    else:
-                        self.stencil[pRow][pCol] += w[row][col]
-                        self.stencil[pCol][pRow] += w[col][row]
+            for j in range(0, self.dimension+1):
+                self.stencil[self.meshElements[i][j][0], self.meshElements[i][j][1], self.meshElements[i][j][2], 1, 1, 1] += w[j][j]
+            for row in range(0, self.dimension+1):
+                for col in range(row+1, self.dimension+1):
+                    d = self.meshElements[i][col]-self.meshElements[i][row] + 1
+                    self.stencil[self.meshElements[i][row][0], self.meshElements[i][row][1], self.meshElements[i][row][2], d[0], d[1], d[2]] += w[row][col]
+                    d = self.meshElements[i][row]-self.meshElements[i][col] + 1
+                    self.stencil[self.meshElements[i][col][0], self.meshElements[i][col][1], self.meshElements[i][col][2], d[0], d[1], d[2]] += w[col][row]
+        # for i in range(0, self.width+1):
+        #     for j in range(0, self.height+1):
+        #         for k in range(0, self.depth+1):
+        #             print(str(i)+" "+str(j)+" "+str(k)+" "+str((i * (self.height + 1) * (self.depth + 1)) + (j * (self.depth + 1)) + k))
+        #             print(self.stencil[i][j][k])
         return
 
-    def getBuilderTensor(self):
-        builder = torch.zeros(size=[4,3], dtype = torch.float32)
-        builder[1:4, :] = torch.eye(3)
-        builder[0, :] = -1 * torch.ones(3)
-        return builder
-
     def multiplyWithStencil(self, x, q):
-        q += torch.matmul(self.stencil, x)
+        q[:, :, :, :] = 0.0
+        for c in range(0, 3):
+            q[:,:,:,c] += x[:,:,:,c] * self.stencil[:,:,:,1,1,1]
+        
+        # q += torch.matmul(self.stencil, x)
         return q
 
+    #not used
     def computeDs(self, elementNum):
         builder = self.getBuilderTensor()
         X = torch.zeros(size=[3, 4], dtype = torch.float32)
-        for j in range(0, 4):
-            X[:, j] = self.particles[self.meshElements[elementNum][j]]
+        for j in range(0, self.dimension+1):
+            X[:, j] = self.particles[self.meshElements[elementNum][j][0], self.meshElements[elementNum][j][1], self.meshElements[elementNum][j][2]]
         return torch.matmul(X, builder)
 
     def solveLocalStep(self):
@@ -117,8 +125,8 @@ class ProjectiveDynamicsSolver:
         for i in range(0, self.numMeshElements):
             # dS = self.computeDs(i)
             X = torch.zeros(size=[3, 4], dtype = torch.float32)
-            for j in range(0, 4):
-                X[:, j] = self.particles[self.meshElements[i][j]]
+            for j in range(0, self.dimension+1):
+                X[ :, j] = self.particles[self.meshElements[i][j][0], self.meshElements[i][j][1], self.meshElements[i][j][2]]
             deformationF = torch.matmul(X, self.GTranspose[i])
             u, sigma, v = torch.svd(deformationF)
             if torch.det(u) < 0:
@@ -132,8 +140,8 @@ class ProjectiveDynamicsSolver:
     def computeElasticForce(self, forceTensor):
         for i in range(0, self.numMeshElements):
             X = torch.zeros(size=[3, 4], dtype = torch.float32)
-            for j in range(0, 4):
-                X[:, j] = self.particles[self.meshElements[i][j]]
+            for j in range(0, self.dimension+1):
+                X[:, j] = self.particles[self.meshElements[i][j][0], self.meshElements[i][j][1], self.meshElements[i][j][2]]
             deformationF = torch.mm(X, self.GTranspose[i])
             u, sigma, v = torch.svd(deformationF)
             if torch.det(u) < 0:
@@ -150,33 +158,33 @@ class ProjectiveDynamicsSolver:
             P = 2 * self.mu * (deformationF - self.R[i])
             Q = -1 * self.restVolume[i] * torch.mm(P, self.GTranspose[i].t())
             for j in range(0, 4):
-                forceTensor[self.meshElements[i][j]] += Q[:, j]
+                forceTensor[self.meshElements[i][j][0], self.meshElements[i][j][1], self.meshElements[i][j][2], :] += Q[:, j]
         return
 
     def resetConstrainedParticles(self, t, val):
-        t = torch.from_numpy(self.latticeMeshObject.resetConstrainedParticles(t.numpy(), val))
+        t = self.latticeMeshObject.resetConstrainedParticles(t, val)
         return t
 
     def solveGlobalStep(self):
-        rhs = torch.zeros(size=[self.numParticles, 3], dtype=torch.float32)
-        dx = torch.zeros(size=[self.numParticles, 3], dtype=torch.float32)
-        q = torch.zeros(size=[self.numParticles, 3], dtype=torch.float32)
-        s = torch.zeros(size=[self.numParticles, 3], dtype=torch.float32)
-        r = torch.zeros(size=[self.numParticles, 3], dtype=torch.float32)
+        rhs = torch.zeros(size=[self.width+1, self.height+1, self.depth+1, 3], dtype=torch.float32)
+        dx = torch.zeros(size=[self.width+1, self.height+1, self.depth+1, 3], dtype=torch.float32)
+        q = torch.zeros(size=[self.width+1, self.height+1, self.depth+1, 3], dtype=torch.float32)
+        s = torch.zeros(size=[self.width+1, self.height+1, self.depth+1, 3], dtype=torch.float32)
+        r = torch.zeros(size=[self.width+1, self.height+1, self.depth+1, 3], dtype=torch.float32)
 
         self.computeElasticForce(rhs)
         rhs = self.resetConstrainedParticles(rhs, 0.0)
-        #print(rhs)
-
-        cg = CGSolver(particles=dx, rhs=rhs, q=q, s=s, r=r, numIteration=50,
+        print("printing rhs")
+        print(rhs)
+        
+        cg = CGSolver(particles=dx, rhs=rhs, q=q, s=s, r=r, numIteration=2,
             minConvergenceNorm=1e-5, femObject=self)
         #solve
         cg.solve()
         dx = cg.getSolution()
 
         #update position vector with result
-        for i in range(0, self.numParticles):
-            self.particles[i] += dx[i]
+        self.particles += dx
 
         return
 
@@ -188,12 +196,13 @@ class ProjectiveDynamicsSolver:
         return
 
     def simulateFrame(self, frameNumber):
+        print("frameNumber: "+ str(frameNumber))
         self.stepDt = self.frameDt / float(self.subSteps)
         for i in range(1, self.subSteps+1):
             self.stepEndTime = self.frameDt * (frameNumber-1) + self.stepDt * i
             if frameNumber == 5:
-                r = (-2 * torch.rand(self.numParticles,3)) + 1.0
+                r = (-2 * torch.rand(self.width+1, self.height+1, self.depth+1,self.dimension)) + 1.0
                 self.particles += r
                 self.latticeMeshObject.writeToFile(1, self.particles.numpy())
             self.pdSimulation()
-            self.latticeMeshObject.writeToFile(1, self.particles.numpy())
+            self.latticeMeshObject.writeToFile(1, self.particles)

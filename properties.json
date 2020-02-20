@@ -1,8 +1,9 @@
 {
-    "width": 5,
-    "height": 4,
-    "depth": 3,
+    "width": 3,
+    "height": 2,
+    "depth": 1,
     "gridDx": 0.5,
+    "dimension": 3,
     "density": "1.e2",
     "mu": 1.0,
     "lmbda": 4.0,
