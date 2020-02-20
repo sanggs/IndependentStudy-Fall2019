@@ -37,7 +37,7 @@ class CGSolver:
         convergenceNorm = 0
         # self.writeToFile(0)
         for i in range(0, self.maxIterations):
-            convergenceNorm = torch.sqrt(torch.max(torch.sum(self.r*self.r, dim = 3)))
+            convergenceNorm = torch.sqrt(torch.max(torch.sum(self.r*self.r, dim = 0)))
             print("printing convergence norm "+str(convergenceNorm))
             if convergenceNorm < self.minConvergenceNorm:
                 print("Convergence Norm less than threshold")
@@ -58,7 +58,7 @@ class CGSolver:
             #print("Q")
             #print(self.q)
             sDotq = torch.sum(self.s*self.q)
-            print("Iteration: "+str(i)+" sDotq: "+str(sDotq))
+            #print("Iteration: "+str(i)+" sDotq: "+str(sDotq))
             if sDotq <= 0:
                 print("CG matrix appears indefinite or singular, s_dot_q/s_dot_s="
                     +str(sDotq/(torch.sum(self.s*self.s))))
