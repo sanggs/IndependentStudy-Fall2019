@@ -24,11 +24,11 @@ class LatticeMesh:
         self.activeParticles = {}
         self.particles = torch.zeros([self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
         self.particleIndex = {}
-        #set left and right handles
+        # set left and right handles --> not used in the torch implementation ,since we know what left and right handles are
         self.leftHandleIndices = []
-        self.originalLeftHandlePositions = []
         self.rightHandleIndices = []
-        self.originalRightHandlePositions = []
+        # set original positions of left and right handles
+        self.originalHandlePositions = torch.zeros([self.dimension, 2, self.height+1, self.depth+1], dtype = torch.float32) #left handle is index 0, right handle is index 1
         count = 0
         for cell in self.activeCells:
             for i in range(cell[0], cell[0]+2):
@@ -42,10 +42,12 @@ class LatticeMesh:
                             self.particleIndex[index] = pKey
                             if i == 0:
                                 self.leftHandleIndices.append([i, j, k])
-                                self.originalLeftHandlePositions.append([i*self.gridDx, j*self.gridDx, k*self.gridDx])
+                                # self.originalLeftHandlePositions.append([i*self.gridDx, j*self.gridDx, k*self.gridDx])
+                                self.originalHandlePositions[:, 0, j, k] = torch.tensor([i*self.gridDx, j*self.gridDx, k*self.gridDx])
                             elif i == self.width:
                                 self.rightHandleIndices.append([i, j, k])
-                                self.originalRightHandlePositions.append([i*self.gridDx, j*self.gridDx, k*self.gridDx])
+                                # self.originalRightHandlePositions.append([i*self.gridDx, j*self.gridDx, k*self.gridDx])
+                                self.originalHandlePositions[:, 1, j, k] = torch.tensor([i*self.gridDx, j*self.gridDx, k*self.gridDx])
                             count += 1
         #initialise mesh elements
         #populate mesh elements
@@ -56,12 +58,6 @@ class LatticeMesh:
                 for j in range(0, 2):
                     for k in range(0, 2):
                         pIndex = [cell[0]+i, cell[1]+j, cell[2]+k]
-                        # pNum = self.getParticle(self.activeParticles, pKey)
-                        # if pNum is None:
-                        #     print("ERROR: PARTICLE NOT FOUND")
-                        #     sys.exit()
-                        # else:
-                        #     pCell.append(pNum)
                         pCell.append(pIndex)
             self.meshElements.append([pCell[0], pCell[4], pCell[6], pCell[7]])
             self.meshElements.append([pCell[0], pCell[4], pCell[7], pCell[5]])
@@ -70,12 +66,6 @@ class LatticeMesh:
             self.meshElements.append([pCell[0], pCell[7], pCell[2], pCell[3]])
             self.meshElements.append([pCell[0], pCell[6], pCell[2], pCell[7]])
         self.meshElements = torch.tensor(self.meshElements, dtype=torch.int64)
-        # for element in self.meshElements:
-        #     print(element)
-        #     print(self.particles[element[0][0], element[0][1], element[0][2]])
-        #     print(self.particles[element[1][0], element[1][1], element[1][2]])
-        #     print(self.particles[element[2][0], element[2][1], element[2][2]])
-        #     print(self.particles[element[3][0], element[3][1], element[3][2]])
 
         #set left handle and right handle velocity
         self.leftHandleVelocity = torch.zeros(3)
@@ -115,25 +105,19 @@ class LatticeMesh:
             return None
 
     def resetConstrainedParticles(self, x, value):
-        for index in self.leftHandleIndices:
-            x[:, index[0], index[1], index[2]] = value
-        for index in self.rightHandleIndices:
-            x[:, index[0], index[1], index[2]] = value
-        return x
+        x[:, 0, :, :] = value
+        x[:, self.width, :, :] = value
 
     def setBoundaryConditions(self, pos, vel, stepEndTime):
         effectiveTime = min(stepEndTime, 1.0)
-        print(effectiveTime)
-        count = 0
-        for p in self.leftHandleIndices:
-            pos[:, p[0], p[1], p[2]] = torch.tensor(self.originalLeftHandlePositions[count]) + effectiveTime * self.leftHandleVelocity
-            vel[:, p[0], p[1], p[2]] = self.leftHandleVelocity
-            count += 1
-        count = 0
-        for p in self.rightHandleIndices:
-            pos[:, p[0], p[1], p[2]] = torch.tensor(self.originalRightHandlePositions[count]) + effectiveTime * self.rightHandleVelocity
-            vel[:, p[0], p[1], p[2]] = self.rightHandleVelocity
-            count += 1
+        # LEFT HANDLE
+        pos[0, 0, :, :] = self.originalHandlePositions[0, 0, :, :] + effectiveTime * self.leftHandleVelocity[0]
+        pos[1, 0, :, :] = self.originalHandlePositions[1, 0, :, :] + effectiveTime * self.leftHandleVelocity[1]
+        pos[2, 0, :, :] = self.originalHandlePositions[2, 0, :, :] + effectiveTime * self.leftHandleVelocity[2]
+        # RIGHT HANDLE
+        pos[0, self.width, :, :] = self.originalHandlePositions[0, 1, :, :] + effectiveTime * self.rightHandleVelocity[0]
+        pos[1, self.width, :, :] = self.originalHandlePositions[1, 1, :, :] + effectiveTime * self.rightHandleVelocity[1]
+        pos[2, self.width, :, :] = self.originalHandlePositions[2, 1, :, :] + effectiveTime * self.rightHandleVelocity[2]
 
     def sortParticles(self):
         yx = zip(self.particleIndex, self.particles)
@@ -142,32 +126,27 @@ class LatticeMesh:
         print(self.sortedParticles)
         self.sortedIndex = [y for y,x in yx]
 
-if __name__ == '__main__':
-    simProperties = None
-    with open('properties.json') as json_file:
-        simProperties = json.load(json_file)
-    lm = LatticeMesh(simProperties)
-    # fem = FiniteElementMesh(density=1.e2, mu=1., lmbda=4., rayleighCoefficient=.05, frames=50, frameDt=0.1)
-    #lm.sortParticles()
-    # fem.setParticles(lm.particles, lm.width, lm.height, lm.depth, lm.particleIndex)
-    # fem.setMeshElements(lm.meshElements)
-    # fem.setHandles(lm.leftHandleIndices, lm.rightHandleIndices)
-    # fem.registerLatticeMeshObject(lm)
-    # fem.initialiseUndeformedConfiguration()
-
-    #ProjectiveDynamicsSolver
-    print("pd")
-    pdSolver = ProjectiveDynamicsSolver(simProperties, lm.particles, lm.particleIndex, lm.meshElements, lm)
-
-    #testcase
-    
+def testStencil():
     x = torch.rand(3, lm.width+1, lm.height+1, lm.depth+1)
     y1 = torch.zeros(3, lm.width+1, lm.height+1, lm.depth+1)
     y1 = pdSolver.multiplyWithStiffnessMatrixPD(x, y1)
     y2 = torch.zeros(3, lm.width+1, lm.height+1, lm.depth+1)
     y2 = pdSolver.multiplyWithStencil(x, y2)
     error = torch.abs(y2.sub(y1))
-    print(torch.sum(torch.where(error > 1e-6, torch.tensor(1), torch.tensor(0))))
+    print(torch.sum(torch.where(error > 1e-7, torch.tensor(1), torch.tensor(0))))
+
+if __name__ == '__main__':
+    simProperties = None
+    with open('properties.json') as json_file:
+        simProperties = json.load(json_file)
+    lm = LatticeMesh(simProperties)
+
+    #ProjectiveDynamicsSolver
+    print("pd")
+    pdSolver = ProjectiveDynamicsSolver(simProperties, lm.particles, lm.particleIndex, lm.meshElements, lm)
+
+    #test the accuracy of the precomputed stencil
+    # testStencil()
     
     for i in range(1, 50):
         pdSolver.simulateFrame(i)

@@ -139,7 +139,7 @@ class ProjectiveDynamicsSolver:
                     for dk in range(0, 3):
                         q[c, :, :, :] += xpad[c, x_start+di:x_end+di, y_start+dj:y_end+dj, z_start+dk:z_end+dk] * self.stencil[:, :, :, di, dj, dk]
         # q += torch.matmul(self.stencil, x)
-        return q
+        return
 
     #not used
     def computeDs(self, elementNum):
@@ -192,8 +192,8 @@ class ProjectiveDynamicsSolver:
         return
 
     def resetConstrainedParticles(self, t, val):
-        t = self.latticeMeshObject.resetConstrainedParticles(t, val)
-        return t
+        self.latticeMeshObject.resetConstrainedParticles(t, val)
+        return
 
     def solveGlobalStep(self):
         rhs = torch.zeros(size=[self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
@@ -203,7 +203,7 @@ class ProjectiveDynamicsSolver:
         r = torch.zeros(size = [self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
 
         self.computeElasticForce(rhs)
-        rhs = self.resetConstrainedParticles(rhs, 0.0)
+        self.resetConstrainedParticles(rhs, 0.0)
         #print("printing rhs")
         #print(rhs)
         
@@ -214,7 +214,7 @@ class ProjectiveDynamicsSolver:
         dx = cg.getSolution()
 
         #update position vector with result
-        print(dx.shape)
+        # print(dx.shape)
         self.particles += dx
 
         return
@@ -232,7 +232,7 @@ class ProjectiveDynamicsSolver:
         self.stepDt = self.frameDt / float(self.subSteps)
         for i in range(1, self.subSteps+1):
             self.stepEndTime = self.frameDt * (frameNumber-1) + self.stepDt * i
-            if frameNumber == 2:
+            if frameNumber == 5:
                 r = (-2 * torch.rand(self.dimension, self.width+1, self.height+1, self.depth+1)) + 1.0
                 self.particles += r
                 self.latticeMeshObject.writeToFile(i, self.particles)
