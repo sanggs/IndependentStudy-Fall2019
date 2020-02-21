@@ -139,7 +139,7 @@ def recordTimeTaken(fileName, data):
     f = open(fileName, "a")
     for entry in data:
         f.write(str(entry)+"\n")
-    f.write("\n------------------\n")
+    f.write("------------------\n")
     f.close()
     return
 

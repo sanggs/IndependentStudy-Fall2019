@@ -222,10 +222,12 @@ class ProjectiveDynamicsSolver:
         #print("printing rhs")
         #print(rhs)
         
+        startTime = time.time() # start the timer
         cg = CGSolver(particles=dx, rhs=rhs, q=q, s=s, r=r, numIteration=60,
             minConvergenceNorm=1e-5, femObject=self)
         #solve
         cg.solve()
+        self.timeMeasured.append(tuple(['cgSolve', time.time()-startTime])) # end the timer, add to the list
         dx = cg.getSolution()
 
         #update position vector with result
