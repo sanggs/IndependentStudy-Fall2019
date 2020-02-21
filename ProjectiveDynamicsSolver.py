@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import sys
+import time
 
 from ConjugateGradientSolver import CGSolver
 
@@ -26,7 +27,12 @@ class ProjectiveDynamicsSolver:
         self.latticeMeshObject = None
         if(lm):
             self.registerLatticeMeshObject(lm)
+        self.timeMeasured = [] # timeMeasured is a list of tuples
+        
+        startTime = time.time() # start the timer
         self.initialiseUndeformedConfiguration()
+        self.timeMeasured.append(tuple(['initialiseUndeformedConfiguration', time.time()-startTime])) # end the timer, add to the list
+
 
     def setParticles(self, particles, particleIndex):
         self.particles = particles
@@ -77,9 +83,15 @@ class ProjectiveDynamicsSolver:
             elementMass = self.density * self.restVolume[i]
             for particle in self.meshElements[i]:
                 self.particleMass[particle] += (1.0/5.0) * elementMass
+        #write points to file
+        startTime = time.time() # start the timer
         self.latticeMeshObject.writeToFile(0, self.particles)
+        self.timeMeasured.append(tuple(['writeToFile', time.time()-startTime])) # end the timer, add to the list
         #Extract stencil
+        startTime = time.time() # start the timer
         self.precomputeStencilMatrix()
+        self.timeMeasured.append(tuple(['preComputeStencilMatrix', time.time()-startTime])) # end the timer, add to the list
+        self.recordOnce = True
 
     def printStencil(self):
         # for i in range(0, self.width+1):
@@ -125,6 +137,8 @@ class ProjectiveDynamicsSolver:
         return f
 
     def multiplyWithStencil(self, x, q):
+        startTime = time.time() # start the timer
+
         q[:, :, :, :] = 0.0
         xpad = torch.nn.functional.pad(x, (1,1,1,1,1,1), "constant", 0)
         x_start = 0
@@ -138,7 +152,8 @@ class ProjectiveDynamicsSolver:
                 for dj in range(0, 3):
                     for dk in range(0, 3):
                         q[c, :, :, :] += xpad[c, x_start+di:x_end+di, y_start+dj:y_end+dj, z_start+dk:z_end+dk] * self.stencil[:, :, :, di, dj, dk]
-        # q += torch.matmul(self.stencil, x)
+
+        self.timeMeasured.append(tuple(['multiplyWithStencil', time.time()-startTime])) # end the timer, add to the list
         return
 
     #not used
@@ -207,7 +222,7 @@ class ProjectiveDynamicsSolver:
         #print("printing rhs")
         #print(rhs)
         
-        cg = CGSolver(particles=dx, rhs=rhs, q=q, s=s, r=r, numIteration=50,
+        cg = CGSolver(particles=dx, rhs=rhs, q=q, s=s, r=r, numIteration=60,
             minConvergenceNorm=1e-5, femObject=self)
         #solve
         cg.solve()
@@ -223,8 +238,12 @@ class ProjectiveDynamicsSolver:
         self.latticeMeshObject.setBoundaryConditions(self.particles,
             self.particleVelocity, self.stepEndTime)
         for i in range(0, 1):
+            startTime = time.time() # start the timer
             self.solveLocalStep()
+            self.timeMeasured.append(tuple(['solveLocalStep', time.time()-startTime])) # end the timer, add to the list
+            startTime = time.time() # start the timer
             self.solveGlobalStep()
+            self.timeMeasured.append(tuple(['solveGlobalStep', time.time()-startTime])) # end the timer, add to the list
         return
 
     def simulateFrame(self, frameNumber):
@@ -238,3 +257,6 @@ class ProjectiveDynamicsSolver:
                 self.latticeMeshObject.writeToFile(i, self.particles)
             self.pdSimulation()
             self.latticeMeshObject.writeToFile(i, self.particles)
+
+    def getTimeMeasured(self):
+        return self.timeMeasured   

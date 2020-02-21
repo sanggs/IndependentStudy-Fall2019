@@ -129,11 +129,19 @@ class LatticeMesh:
 def testStencil():
     x = torch.rand(3, lm.width+1, lm.height+1, lm.depth+1)
     y1 = torch.zeros(3, lm.width+1, lm.height+1, lm.depth+1)
-    y1 = pdSolver.multiplyWithStiffnessMatrixPD(x, y1)
+    pdSolver.multiplyWithStiffnessMatrixPD(x, y1)
     y2 = torch.zeros(3, lm.width+1, lm.height+1, lm.depth+1)
-    y2 = pdSolver.multiplyWithStencil(x, y2)
+    pdSolver.multiplyWithStencil(x, y2)
     error = torch.abs(y2.sub(y1))
     print(torch.sum(torch.where(error > 1e-7, torch.tensor(1), torch.tensor(0))))
+
+def recordTimeTaken(fileName, data):
+    f = open(fileName, "a")
+    for entry in data:
+        f.write(str(entry)+"\n")
+    f.write("\n------------------\n")
+    f.close()
+    return
 
 if __name__ == '__main__':
     simProperties = None
@@ -150,3 +158,5 @@ if __name__ == '__main__':
     
     for i in range(1, 50):
         pdSolver.simulateFrame(i)
+    
+    recordTimeTaken(simProperties["timeMeasures"], pdSolver.getTimeMeasured())

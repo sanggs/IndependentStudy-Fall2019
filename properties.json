@@ -1,7 +1,7 @@
 {
-    "width": 5,
-    "height": 4,
-    "depth": 3,
+    "width": 10,
+    "height": 10,
+    "depth": 10,
     "gridDx": 0.5,
     "dimension": 3,
     "density": "1.e2",
@@ -25,5 +25,6 @@
             "z": 0
         }
     ],
-    "targetFile": "3DPoints.csv"
+    "targetFile": "3DPoints.csv",
+    "timeMeasures":"timeMeasures.txt"
 }
