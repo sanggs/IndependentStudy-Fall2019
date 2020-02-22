@@ -200,7 +200,8 @@ class ProjectiveDynamicsSolver:
                 v[:, 2] = -1 * v[:, 2]
                 sigma[2] = -1 * sigma[2]
                 deformationF = torch.mm(u, torch.mm(torch.diag(sigma), v.t()))
-            P = 2 * self.mu * (deformationF - self.R[i])
+            R = torch.mm(u, v.t())
+            P = 2 * self.mu * (deformationF - R)
             Q = -1 * self.restVolume[i] * torch.mm(P, self.GTranspose[i].t())
             for j in range(0, 4):
                 forceTensor[:, self.meshElements[i][j][0], self.meshElements[i][j][1], self.meshElements[i][j][2]] += Q[:, j]
@@ -210,7 +211,7 @@ class ProjectiveDynamicsSolver:
         self.latticeMeshObject.resetConstrainedParticles(t, val)
         return
 
-    def solveGlobalStep(self):
+    def solveLocalAndGlobalStep(self):
         rhs = torch.zeros(size=[self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
         dx = torch.zeros(size= [self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
         q = torch.zeros(size = [self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
@@ -240,12 +241,12 @@ class ProjectiveDynamicsSolver:
         self.latticeMeshObject.setBoundaryConditions(self.particles,
             self.particleVelocity, self.stepEndTime)
         for i in range(0, 1):
+            # startTime = time.time() # start the timer
+            # self.solveLocalStep()
+            # self.timeMeasured.append(tuple(['solveLocalStep', time.time()-startTime])) # end the timer, add to the list
             startTime = time.time() # start the timer
-            self.solveLocalStep()
-            self.timeMeasured.append(tuple(['solveLocalStep', time.time()-startTime])) # end the timer, add to the list
-            startTime = time.time() # start the timer
-            self.solveGlobalStep()
-            self.timeMeasured.append(tuple(['solveGlobalStep', time.time()-startTime])) # end the timer, add to the list
+            self.solveLocalAndGlobalStep()
+            self.timeMeasured.append(tuple(['solveLocalAndGlobalStep', time.time()-startTime])) # end the timer, add to the list
         return
 
     def simulateFrame(self, frameNumber):
@@ -257,7 +258,9 @@ class ProjectiveDynamicsSolver:
                 r = (-2 * torch.rand(self.dimension, self.width+1, self.height+1, self.depth+1)) + 1.0
                 self.particles += r
                 self.latticeMeshObject.writeToFile(i, self.particles)
+            startTime = time.time()
             self.pdSimulation()
+            self.timeMeasured.append(tuple(['totalTime', time.time()-startTime])) # end the timer, add to the list
             self.latticeMeshObject.writeToFile(i, self.particles)
 
     def getTimeMeasured(self):
