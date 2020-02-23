@@ -34,7 +34,7 @@ class LatticeMesh:
             for i in range(cell[0], cell[0]+2):
                 for j in range(cell[1], cell[1]+2):
                     for k in range(cell[2], cell[2]+2):
-                        pKey = tuple([i, j, k]) # dict(particle=[i, j, k], numParticle=len(self.particles))
+                        pKey = tuple([i+1, j+1, k+1]) # dict(particle=[i, j, k], numParticle=len(self.particles))
                         if not self.findParticle(self.activeParticles, pKey):
                             index = count
                             self.activeParticles[pKey] = index
@@ -45,10 +45,12 @@ class LatticeMesh:
                                 # self.originalLeftHandlePositions.append([i*self.gridDx, j*self.gridDx, k*self.gridDx])
                                 self.originalHandlePositions[:, 0, j, k] = torch.tensor([i*self.gridDx, j*self.gridDx, k*self.gridDx])
                             elif i == self.width:
-                                self.rightHandleIndices.append([i, j, k])
+                                self.rightHandleIndices.append([i+1, j+1, k+1])
                                 # self.originalRightHandlePositions.append([i*self.gridDx, j*self.gridDx, k*self.gridDx])
                                 self.originalHandlePositions[:, 1, j, k] = torch.tensor([i*self.gridDx, j*self.gridDx, k*self.gridDx])
                             count += 1
+        self.particles = torch.nn.functional.pad(self.particles, (1,1,1,1,1,1), "constant", 0)
+        # self.originalHandlePositions = torch.nn.functional.pad(self.originalHandlePositions, (1,1,1,1,1,1), "constant", 0)
         #initialise mesh elements
         #populate mesh elements
         self.meshElements = []
@@ -65,7 +67,7 @@ class LatticeMesh:
             self.meshElements.append([pCell[0], pCell[7], pCell[3], pCell[1]])
             self.meshElements.append([pCell[0], pCell[7], pCell[2], pCell[3]])
             self.meshElements.append([pCell[0], pCell[6], pCell[2], pCell[7]])
-        self.meshElements = torch.tensor(self.meshElements, dtype=torch.int64)
+        self.meshElements = torch.tensor(self.meshElements, dtype=torch.int64) + 1
 
         #set left handle and right handle velocity
         self.leftHandleVelocity = torch.zeros(3)
@@ -80,7 +82,7 @@ class LatticeMesh:
             self.rightHandleVelocity[2] = v["z"]
 
     def writeToFile(self, fno, pos):
-        p = np.ones(shape = [pos.shape[1] * pos.shape[2] * pos.shape[3], pos.shape[0]], dtype=np.float32)
+        p = np.ones(shape = [ (self.width+1) * (self.height+1) * (self.depth+1), pos.shape[0]], dtype=np.float32)
         for j in self.particleIndex:
             index = self.particleIndex[j]
             p[j, :] = pos[:, index[0], index[1], index[2]].numpy()
@@ -111,13 +113,13 @@ class LatticeMesh:
     def setBoundaryConditions(self, pos, vel, stepEndTime):
         effectiveTime = min(stepEndTime, 1.0)
         # LEFT HANDLE
-        pos[0, 0, :, :] = self.originalHandlePositions[0, 0, :, :] + effectiveTime * self.leftHandleVelocity[0]
-        pos[1, 0, :, :] = self.originalHandlePositions[1, 0, :, :] + effectiveTime * self.leftHandleVelocity[1]
-        pos[2, 0, :, :] = self.originalHandlePositions[2, 0, :, :] + effectiveTime * self.leftHandleVelocity[2]
+        pos[0, 1, 1:self.height+2, 1:self.depth+2] = self.originalHandlePositions[0, 0, :, :] + effectiveTime * self.leftHandleVelocity[0]
+        pos[1, 1, 1:self.height+2, 1:self.depth+2] = self.originalHandlePositions[1, 0, :, :] + effectiveTime * self.leftHandleVelocity[1]
+        pos[2, 1, 1:self.height+2, 1:self.depth+2] = self.originalHandlePositions[2, 0, :, :] + effectiveTime * self.leftHandleVelocity[2]
         # RIGHT HANDLE
-        pos[0, self.width, :, :] = self.originalHandlePositions[0, 1, :, :] + effectiveTime * self.rightHandleVelocity[0]
-        pos[1, self.width, :, :] = self.originalHandlePositions[1, 1, :, :] + effectiveTime * self.rightHandleVelocity[1]
-        pos[2, self.width, :, :] = self.originalHandlePositions[2, 1, :, :] + effectiveTime * self.rightHandleVelocity[2]
+        pos[0, self.width+1, 1:self.height+2, 1:self.depth+2] = self.originalHandlePositions[0, 1, :, :] + effectiveTime * self.rightHandleVelocity[0]
+        pos[1, self.width+1, 1:self.height+2, 1:self.depth+2] = self.originalHandlePositions[1, 1, :, :] + effectiveTime * self.rightHandleVelocity[1]
+        pos[2, self.width+1, 1:self.height+2, 1:self.depth+2] = self.originalHandlePositions[2, 1, :, :] + effectiveTime * self.rightHandleVelocity[2]
 
     def sortParticles(self):
         yx = zip(self.particleIndex, self.particles)

@@ -25,12 +25,12 @@ countDict = {}
 f = open('timeMeasures.txt', 'r')
 for line in f:
     if line.__contains__('--'):
-        print(timeDict)
-        print(countDict)
+        #print(timeDict)
+        #print(countDict)
         x, y = ComputeAverage()
-        print(x)
-        print(y)
-        plotAvg(x, y)
+        for i in range(0, len(x)):
+            print(f'{x[i]:36} - {y[i]:20} : {countDict[x[i]]}')
+        # plotAvg(x, y)
         timeDict.clear()
         countDict.clear()
         print(line)

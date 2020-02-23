@@ -110,14 +110,14 @@ class ProjectiveDynamicsSolver:
             w = 2 * self.mu * self.restVolume[i] * GtG[i]
             #diagonals
             for j in range(0, self.dimension+1):
-                self.stencil[self.meshElements[i][j][0], self.meshElements[i][j][1], self.meshElements[i][j][2], 1, 1, 1] += w[j][j]
+                self.stencil[self.meshElements[i][j][0]-1, self.meshElements[i][j][1]-1, self.meshElements[i][j][2]-1, 1, 1, 1] += w[j][j]
             #upper
             for row in range(0, self.dimension+1):
                 for col in range(row+1, self.dimension+1):
                     d = self.meshElements[i][col]-self.meshElements[i][row] + 1
-                    self.stencil[self.meshElements[i][row][0], self.meshElements[i][row][1], self.meshElements[i][row][2], d[0], d[1], d[2]] += w[row][col]
+                    self.stencil[self.meshElements[i][row][0]-1, self.meshElements[i][row][1]-1, self.meshElements[i][row][2]-1, d[0], d[1], d[2]] += w[row][col]
                     d = self.meshElements[i][row]-self.meshElements[i][col] + 1
-                    self.stencil[self.meshElements[i][col][0], self.meshElements[i][col][1], self.meshElements[i][col][2], d[0], d[1], d[2]] += w[row][col]
+                    self.stencil[self.meshElements[i][col][0]-1, self.meshElements[i][col][1]-1, self.meshElements[i][col][2]-1, d[0], d[1], d[2]] += w[row][col]
             # for row in range(0, self.dimension+1):
             #     for col in range(0, self.dimension+1):
             #         d = self.meshElements[i, col] - self.meshElements[i, row] + 1
@@ -140,7 +140,7 @@ class ProjectiveDynamicsSolver:
         startTime = time.time() # start the timer
 
         q[:, :, :, :] = 0.0
-        xpad = torch.nn.functional.pad(x, (1,1,1,1,1,1), "constant", 0)
+        
         x_start = 0
         y_start = 0
         z_start = 0
@@ -151,7 +151,7 @@ class ProjectiveDynamicsSolver:
             for di in range(0, 3):
                 for dj in range(0, 3):
                     for dk in range(0, 3):
-                        q[c, :, :, :] += xpad[c, x_start+di:x_end+di, y_start+dj:y_end+dj, z_start+dk:z_end+dk] * self.stencil[:, :, :, di, dj, dk]
+                        q[c, :, :, :] += x[c, x_start+di:x_end+di, y_start+dj:y_end+dj, z_start+dk:z_end+dk] * self.stencil[:, :, :, di, dj, dk]
 
         self.timeMeasured.append(tuple(['multiplyWithStencil', time.time()-startTime])) # end the timer, add to the list
         return
@@ -204,7 +204,7 @@ class ProjectiveDynamicsSolver:
             P = 2 * self.mu * (deformationF - R)
             Q = -1 * self.restVolume[i] * torch.mm(P, self.GTranspose[i].t())
             for j in range(0, 4):
-                forceTensor[:, self.meshElements[i][j][0], self.meshElements[i][j][1], self.meshElements[i][j][2]] += Q[:, j]
+                forceTensor[:, self.meshElements[i][j][0]-1, self.meshElements[i][j][1]-1, self.meshElements[i][j][2]-1] += Q[:, j]
         return
 
     def resetConstrainedParticles(self, t, val):
@@ -213,9 +213,9 @@ class ProjectiveDynamicsSolver:
 
     def solveLocalAndGlobalStep(self):
         rhs = torch.zeros(size=[self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
-        dx = torch.zeros(size= [self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
+        dx = torch.zeros(size= [self.dimension, self.width+3, self.height+3, self.depth+3], dtype=torch.float32)
         q = torch.zeros(size = [self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
-        s = torch.zeros(size = [self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
+        s = torch.zeros(size = [self.dimension, self.width+3, self.height+3, self.depth+3], dtype=torch.float32)
         r = torch.zeros(size = [self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
 
         self.computeElasticForce(rhs)
@@ -224,8 +224,7 @@ class ProjectiveDynamicsSolver:
         #print(rhs)
         
         startTime = time.time() # start the timer
-        cg = CGSolver(particles=dx, rhs=rhs, q=q, s=s, r=r, numIteration=60,
-            minConvergenceNorm=1e-5, femObject=self)
+        cg = CGSolver(particles=dx, rhs=rhs, q=q, s=s, r=r, numIteration=60, minConvergenceNorm=1e-5, width=self.width, height=self.height, depth=self.depth, femObject=self)
         #solve
         cg.solve()
         self.timeMeasured.append(tuple(['cgSolve', time.time()-startTime])) # end the timer, add to the list
@@ -233,7 +232,7 @@ class ProjectiveDynamicsSolver:
 
         #update position vector with result
         # print(dx.shape)
-        self.particles += dx
+        self.particles[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2] += dx[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2]
 
         return
 
@@ -256,11 +255,9 @@ class ProjectiveDynamicsSolver:
             self.stepEndTime = self.frameDt * (frameNumber-1) + self.stepDt * i
             if frameNumber == 5:
                 r = (-2 * torch.rand(self.dimension, self.width+1, self.height+1, self.depth+1)) + 1.0
-                self.particles += r
+                self.particles[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2] += r
                 self.latticeMeshObject.writeToFile(i, self.particles)
-            startTime = time.time()
             self.pdSimulation()
-            self.timeMeasured.append(tuple(['totalTime', time.time()-startTime])) # end the timer, add to the list
             self.latticeMeshObject.writeToFile(i, self.particles)
 
     def getTimeMeasured(self):
