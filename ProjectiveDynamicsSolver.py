@@ -6,7 +6,7 @@ import time
 from ConjugateGradientSolver import CGSolver
 
 class ProjectiveDynamicsSolver:
-    def __init__(self, simProperties, particles, particleIndex, meshElements, lm=None):
+    def __init__(self, simProperties, particles, particleIndex, meshElements, interiorCellMeshElements, lm=None):
         self.density = float(simProperties["density"])
         self.mu = simProperties["mu"]
         self.lmbda = simProperties["lmbda"]
@@ -22,11 +22,19 @@ class ProjectiveDynamicsSolver:
         self.particleVelocity = None
         self.dMInverse = None
         self.restVolume = None
+        self.interiorCellMeshElements = None
+
         self.setParticles(particles, particleIndex)
+        
         self.setMeshElements(meshElements)
+        
+        if(interiorCellMeshElements):
+            self.setInteriorCellMeshElements(interiorCellMeshElements)
+        
         self.latticeMeshObject = None
         if(lm):
             self.registerLatticeMeshObject(lm)
+        
         self.timeMeasured = [] # timeMeasured is a list of tuples
         
         startTime = time.time() # start the timer
@@ -46,6 +54,9 @@ class ProjectiveDynamicsSolver:
 
     def registerLatticeMeshObject(self, lm):
         self.latticeMeshObject = lm
+
+    def setInteriorCellMeshElements(self, interiorCellMeshElements):
+        self.interiorCellMeshElements = interiorCellMeshElements
 
     def getBuilderTensor(self):
         builder = torch.zeros(size=[4,3], dtype = torch.float32)
@@ -85,43 +96,94 @@ class ProjectiveDynamicsSolver:
                 self.particleMass[particle] += (1.0/5.0) * elementMass
         #write points to file
         startTime = time.time() # start the timer
-        self.latticeMeshObject.writeToFile(0, self.particles)
-        self.timeMeasured.append(tuple(['writeToFile', time.time()-startTime])) # end the timer, add to the list
+        # self.latticeMeshObject.writeToFile(0, self.particles)
+        # print(time.time()-startTime)
+        # self.timeMeasured.append(tuple(['writeToFile', time.time()-startTime])) # end the timer, add to the list
         #Extract stencil
         startTime = time.time() # start the timer
         self.precomputeStencilMatrix()
+        print(time.time()-startTime)
         self.timeMeasured.append(tuple(['preComputeStencilMatrix', time.time()-startTime])) # end the timer, add to the list
         self.recordOnce = True
 
     def printStencil(self):
-        # for i in range(0, self.width+1):
-        #     for j in range(0, self.height+1):
-        #         for k in range(0, self.depth+1):
-        #             print(str((i * (self.height + 1) * (self.depth + 1)) + (j * (self.depth + 1)) + k))
+        # for i in range(0, self.width):
+        #     for j in range(0, self.height):
+        #         for k in range(0, self.depth):
         #             print(self.stencil[i][j][k])
         return
 
     def precomputeStencilMatrix(self):
         #print(self.particleIndex.dataset)
+        startTime = time.time()
         self.stencil = torch.zeros(self.width+1, self.height+1, self.depth+1, self.dimension, self.dimension, self.dimension)
         G = torch.transpose(self.GTranspose, 1, 2)
         GtG = torch.matmul(self.GTranspose, G)
+        print(time.time()-startTime)
+        self.timeMeasured.append(tuple(['gTransposeGComputation', time.time()-startTime])) # end the timer, add to the list
+        
+        startTime = time.time()
+        self.stencil1 = torch.zeros(2, 2, 2, self.dimension, self.dimension, self.dimension)
+        indexPos = self.interiorCellMeshElements[0]
+        for i in range(0, 6):
+            w = 2 * self.mu * self.restVolume[indexPos+i] * GtG[indexPos+i]
+            #diagonals
+            for j in range(0, self.dimension+1):
+                index = self.meshElements[indexPos+i][j] - self.latticeMeshObject.interiorActiveCell
+                self.stencil1[index[0]-1, index[1]-1, index[2]-1, 1, 1, 1] += w[j][j]
+            #upper
+            for row in range(0, self.dimension+1):
+                for col in range(row+1, self.dimension+1):
+                    d = self.meshElements[indexPos+i][col]-self.meshElements[indexPos+i][row] + 1
+                    index = self.meshElements[indexPos+i][row] - self.latticeMeshObject.interiorActiveCell
+                    self.stencil1[index[0]-1 , index[1]-1, index[2]-1, d[0], d[1], d[2]] += w[row][col]
+                    d = self.meshElements[indexPos+i][row]-self.meshElements[indexPos+i][col] + 1
+                    index = self.meshElements[indexPos+i][col] - self.latticeMeshObject.interiorActiveCell
+                    self.stencil1[index[0]-1, index[1]-1, index[2]-1, d[0], d[1], d[2]] += w[row][col]
+        # self.printStencil()
+        print(time.time()-startTime)
+        self.timeMeasured.append(tuple(['computingWeightsForOneCell', time.time()-startTime])) # end the timer, add to the list
+        startTime = time.time()
+        #Repeat and add
+        x_start = 0
+        y_start = 0
+        z_start = 0
+        x_end = self.width
+        y_end = self.height
+        z_end = self.depth
+        for i in range(0, 2):
+            for j in range(0, 2):
+                for k in range(0, 2):
+                    self.stencil[x_start+i:x_end+i, y_start+j:y_end+j, z_start+k:z_end+k, :, :, :] += self.stencil1[i,j,k,:,:,:]
+        print(time.time()-startTime)
+        self.timeMeasured.append(tuple(['populatingTheStencil', time.time()-startTime])) # end the timer, add to the list
+        return
+
+    def precomputeStencilWithoutInteriorCell(self):
+        #print(self.particleIndex.dataset)
+        self.stencil2 = torch.zeros(self.width+1, self.height+1, self.depth+1, self.dimension, self.dimension, self.dimension)
+        startTime = time.time()
+        G = torch.transpose(self.GTranspose, 1, 2)
+        GtG = torch.matmul(self.GTranspose, G)
+        self.timeMeasured.append(tuple(['gTransposeGComputation', time.time()-startTime])) # end the timer, add to the list
+        startTime = time.time()
         for i in range(0, self.numMeshElements):
             w = 2 * self.mu * self.restVolume[i] * GtG[i]
             #diagonals
             for j in range(0, self.dimension+1):
-                self.stencil[self.meshElements[i][j][0]-1, self.meshElements[i][j][1]-1, self.meshElements[i][j][2]-1, 1, 1, 1] += w[j][j]
+                self.stencil2[self.meshElements[i][j][0]-1, self.meshElements[i][j][1]-1, self.meshElements[i][j][2]-1, 1, 1, 1] += w[j][j]
             #upper
             for row in range(0, self.dimension+1):
                 for col in range(row+1, self.dimension+1):
                     d = self.meshElements[i][col]-self.meshElements[i][row] + 1
-                    self.stencil[self.meshElements[i][row][0]-1, self.meshElements[i][row][1]-1, self.meshElements[i][row][2]-1, d[0], d[1], d[2]] += w[row][col]
+                    self.stencil2[self.meshElements[i][row][0]-1, self.meshElements[i][row][1]-1, self.meshElements[i][row][2]-1, d[0], d[1], d[2]] += w[row][col]
                     d = self.meshElements[i][row]-self.meshElements[i][col] + 1
-                    self.stencil[self.meshElements[i][col][0]-1, self.meshElements[i][col][1]-1, self.meshElements[i][col][2]-1, d[0], d[1], d[2]] += w[row][col]
+                    self.stencil2[self.meshElements[i][col][0]-1, self.meshElements[i][col][1]-1, self.meshElements[i][col][2]-1, d[0], d[1], d[2]] += w[row][col]
             # for row in range(0, self.dimension+1):
             #     for col in range(0, self.dimension+1):
             #         d = self.meshElements[i, col] - self.meshElements[i, row] + 1
             #         self.stencil[self.meshElements[i, row, 0], self.meshElements[i, row, 1], self.meshElements[i, row, 2], d[0], d[1], d[2]] += w[row][col]
+        self.timeMeasured.append(tuple(['populatingTheStencil', time.time()-startTime])) # end the timer, add to the list
         return
 
     def multiplyWithStiffnessMatrixPD(self, p, f):
@@ -133,7 +195,7 @@ class ProjectiveDynamicsSolver:
             P = 2 * self.mu * deformationF
             Q = self.restVolume[i] * torch.mm(P, self.GTranspose[i].t())
             for j in range(0, 4):
-                f[:, self.meshElements[i][j][0], self.meshElements[i][j][1], self.meshElements[i][j][2]] += Q[:, j]
+                f[:, self.meshElements[i][j][0]-1, self.meshElements[i][j][1]-1, self.meshElements[i][j][2]-1] += Q[:, j]
         return f
 
     def multiplyWithStencil(self, x, q):
@@ -218,13 +280,17 @@ class ProjectiveDynamicsSolver:
         s = torch.zeros(size = [self.dimension, self.width+3, self.height+3, self.depth+3], dtype=torch.float32)
         r = torch.zeros(size = [self.dimension, self.width+1, self.height+1, self.depth+1], dtype=torch.float32)
 
+        startTime = time.time()
         self.computeElasticForce(rhs)
+        self.timeMeasured.append(tuple(['computeElasticForce', time.time()-startTime])) # end the timer, add to the list
+        startTime = time.time()
         self.resetConstrainedParticles(rhs, 0.0)
+        self.timeMeasured.append(tuple(['resetConstrainedParticles', time.time()-startTime])) # end the timer, add to the list
         #print("printing rhs")
         #print(rhs)
         
         startTime = time.time() # start the timer
-        cg = CGSolver(particles=dx, rhs=rhs, q=q, s=s, r=r, numIteration=60, minConvergenceNorm=1e-5, width=self.width, height=self.height, depth=self.depth, femObject=self)
+        cg = CGSolver(particles=dx, rhs=rhs, q=q, s=s, r=r, numIteration=250, minConvergenceNorm=1e-5, width=self.width, height=self.height, depth=self.depth, femObject=self)
         #solve
         cg.solve()
         self.timeMeasured.append(tuple(['cgSolve', time.time()-startTime])) # end the timer, add to the list
@@ -240,12 +306,10 @@ class ProjectiveDynamicsSolver:
         self.latticeMeshObject.setBoundaryConditions(self.particles,
             self.particleVelocity, self.stepEndTime)
         for i in range(0, 1):
-            # startTime = time.time() # start the timer
-            # self.solveLocalStep()
-            # self.timeMeasured.append(tuple(['solveLocalStep', time.time()-startTime])) # end the timer, add to the list
             startTime = time.time() # start the timer
+            # self.solveLocalStep()
             self.solveLocalAndGlobalStep()
-            self.timeMeasured.append(tuple(['solveLocalAndGlobalStep', time.time()-startTime])) # end the timer, add to the list
+            self.timeMeasured.append(tuple(['solveLocalStep', time.time()-startTime])) # end the timer, add to the list
         return
 
     def simulateFrame(self, frameNumber):
@@ -256,9 +320,11 @@ class ProjectiveDynamicsSolver:
             if frameNumber == 5:
                 r = (-2 * torch.rand(self.dimension, self.width+1, self.height+1, self.depth+1)) + 1.0
                 self.particles[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2] += r
-                self.latticeMeshObject.writeToFile(i, self.particles)
+                # self.latticeMeshObject.writeToFile(i, self.particles)
+            startTime = time.time() # start the timer 
             self.pdSimulation()
-            self.latticeMeshObject.writeToFile(i, self.particles)
+            self.timeMeasured.append(tuple(['pdSimulation', time.time()-startTime])) # end the timer, add to the list
+            # self.latticeMeshObject.writeToFile(i, self.particles)
 
     def getTimeMeasured(self):
         return self.timeMeasured   

@@ -35,7 +35,7 @@ class CGSolver:
         convergenceNorm = 0
         for i in range(0, self.maxIterations):
             convergenceNorm = torch.sqrt(torch.max(torch.sum(self.r*self.r, dim = 0)))
-            print("printing convergence norm "+str(convergenceNorm))
+            # print("printing convergence norm "+str(convergenceNorm))
             if convergenceNorm < self.minConvergenceNorm:
                 print("Convergence Norm less than threshold")
                 print(i)

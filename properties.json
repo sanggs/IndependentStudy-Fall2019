@@ -1,7 +1,7 @@
 {
-    "width": 10,
-    "height": 10,
-    "depth": 10,
+    "width": 50,
+    "height": 100,
+    "depth": 20,
     "gridDx": 0.5,
     "dimension": 3,
     "density": "1.e2",
