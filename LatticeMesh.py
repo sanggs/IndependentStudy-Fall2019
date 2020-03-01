@@ -74,18 +74,18 @@ class LatticeMesh:
             self.meshElements.append([pCell[0], pCell[6], pCell[2], pCell[7]])
             if self.interiorActiveCell is not None and len(self.interiorCellMeshElements) == 0:
                 if (cell[0] == self.interiorActiveCell[0] and cell[1] == self.interiorActiveCell[1] and cell[2] == self.interiorActiveCell[2]):
-                    print(len(self.meshElements)-6)
-                    print(self.interiorActiveCell)
-                    self.interiorCellMeshElements.append(len(self.meshElements)-6)
+                    # print(len(self.meshElements)-6)
+                    # print(self.interiorActiveCell)
+                    # self.interiorCellMeshElements.append(len(self.meshElements)-6)
                     self.interiorCellMeshElements.append([pCell[0], pCell[4], pCell[6], pCell[7]])
-                    self.interiorCellMeshElements.append([pCell[0], pCell[4], pCell[7], pCell[5]])
-                    self.interiorCellMeshElements.append([pCell[0], pCell[5], pCell[7], pCell[1]])
-                    self.interiorCellMeshElements.append([pCell[0], pCell[7], pCell[3], pCell[1]])
-                    self.interiorCellMeshElements.append([pCell[0], pCell[7], pCell[2], pCell[3]])
-                    self.interiorCellMeshElements.append([pCell[0], pCell[6], pCell[2], pCell[7]])
+                    self.interiorCellMeshElements.append([pCell[0], pCell[4], pCell[5], pCell[7]])
+                    self.interiorCellMeshElements.append([pCell[0], pCell[1], pCell[5], pCell[7]])
+                    self.interiorCellMeshElements.append([pCell[0], pCell[1], pCell[3], pCell[7]])
+                    self.interiorCellMeshElements.append([pCell[0], pCell[2], pCell[3], pCell[7]])
+                    self.interiorCellMeshElements.append([pCell[0], pCell[2], pCell[6], pCell[7]])
         self.meshElements = torch.tensor(self.meshElements, dtype=torch.int64) + 1
         # self.interiorCellMeshElements = torch.tensor(self.interiorCellMeshElements, dtype=torch.int64) + 1
-        self.interiorActiveCell = torch.tensor(self.interiorActiveCell, dtype=torch.int64)
+        # self.interiorActiveCell = torch.tensor(self.interiorActiveCell, dtype=torch.int64)
 
         #set left handle and right handle velocity
         self.leftHandleVelocity = torch.zeros(3)
@@ -154,8 +154,8 @@ def testStencil():
     y2 = torch.zeros(3, lm.width+1, lm.height+1, lm.depth+1)
     pdSolver.multiplyWithStencil(x, y2)
     error = torch.abs(y2.sub(y1))
-    # print(error)
-    print(torch.sum(torch.where(error > 1e-6, torch.tensor(1), torch.tensor(0))))
+    print(error)
+    print(torch.sum(torch.where(error > 1e-4, torch.tensor(1), torch.tensor(0))))
     sys.exit(0)
 
 def recordTimeTaken(fileName, data):
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     pdSolver = ProjectiveDynamicsSolver(simProperties, lm.particles, lm.particleIndex, lm.meshElements, lm.interiorCellMeshElements, lm)
 
     #test the accuracy of the precomputed stencil
-    # testStencil()
+    testStencil()
     
     for i in range(1, 50):
         pdSolver.simulateFrame(i)
