@@ -155,7 +155,7 @@ def testStencil():
     pdSolver.multiplyWithStencil(x, y2)
     error = torch.abs(y2.sub(y1))
     print(error)
-    print(torch.sum(torch.where(error > 1e-4, torch.tensor(1), torch.tensor(0))))
+    print(torch.sum(torch.where(error > 1e-6, torch.tensor(1), torch.tensor(0))))
     sys.exit(0)
 
 def recordTimeTaken(fileName, data):
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     pdSolver = ProjectiveDynamicsSolver(simProperties, lm.particles, lm.particleIndex, lm.meshElements, lm.interiorCellMeshElements, lm)
 
     #test the accuracy of the precomputed stencil
-    testStencil()
+    # testStencil()
 
     for i in range(1, 50):
         pdSolver.simulateFrame(i)

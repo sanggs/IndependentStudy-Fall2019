@@ -168,8 +168,8 @@ class ProjectiveDynamicsSolver:
         for i in range(0, 6):
             # print(meshElements[i])
             w = 2 * self.mu * self.restVolume[cellIndex[0], cellIndex[1], cellIndex[2], i] * GtG[cellIndex[0], cellIndex[1], cellIndex[2], i]
-            print(i)
-            print(w)
+            # print(i)
+            # print(w)
             #diagonals
             for j in range(0, self.dimension+1):
                 index = meshElements[i][j] - cellIndex
@@ -296,7 +296,7 @@ class ProjectiveDynamicsSolver:
             f[i, 0:self.width, 0:self.height, 1:self.depth+1] += Q[:, :, :, 3, i , 3] #P1 001
             #Tet 4: P0 P7 P2 P3 [000, 111, 010, 011]
             f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 4, i , 0] #P0 000
-            f[i, 1:self.width+1, 1:self.height+1, 0:self.depth] += Q[:, :, :, 4, i , 1] #P7 111
+            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 4, i , 1] #P7 111
             f[i, 0:self.width, 1:self.height+1, 0:self.depth] += Q[:, :, :, 4, i , 2] #P2 010
             f[i, 0:self.width, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 4, i , 3] #P3 011
             #Tet 5: P0 P6 P2 P7 [000, 110, 010, 111]
@@ -361,50 +361,116 @@ class ProjectiveDynamicsSolver:
                 v[:, 2] = -1 * v[:, 2]
             self.R[i] = torch.matmul(u, v.t())
 
-    def computeElasticForceWithoutLoop(self, forceTensor):
+    def computeElasticForce(self, f):
         #access mesh elements without loop
-        X = torch.zeros(size = [6, self.width, self.height, self.depth, self.dimension, self.dimension+1], dtype=torch.float32)
+        X = torch.zeros(size = [self.width, self.height, self.depth, 6, self.dimension, self.dimension+1], dtype=torch.float32)
         for i in range(0, 3):
             #Tet 0: P0 P4 P6 P7 [000, 100, 110, 111]
-            X[0, :, :, :, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[0, :, :, :, i, 1] = self.particles[i, 2:self.width+2, 1:self.height+1, 1:self.depth+1] #P4 100
-            X[0, :, :, :, i, 2] = self.particles[i, 2:self.width+2, 2:self.height+2, 1:self.depth+1] #P6 110
-            X[0, :, :, :, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 0, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 0, i, 1] = self.particles[i, 2:self.width+2, 1:self.height+1, 1:self.depth+1] #P4 100
+            X[:, :, :, 0, i, 2] = self.particles[i, 2:self.width+2, 2:self.height+2, 1:self.depth+1] #P6 110
+            X[:, :, :, 0, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
             #Tet 1: P0 P4 P7 P5 [000, 100, 111, 101]
-            X[1, :, :, :, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[1, :, :, :, i, 1] = self.particles[i, 2:self.width+2, 1:self.height+1, 1:self.depth+1] #P4 100
-            X[1, :, :, :, i, 2] = self.particles[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
-            X[1, :, :, :, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 1, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 1, i, 1] = self.particles[i, 2:self.width+2, 1:self.height+1, 1:self.depth+1] #P4 100
+            X[:, :, :, 1, i, 2] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 1, i, 3] = self.particles[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
             #Tet 2: P0 P5 P7 P1 [000, 101, 111, 001]
-            X[2, :, :, :, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[2, :, :, :, i, 1] = self.particles[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
-            X[2, :, :, :, i, 2] = self.particles[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
-            X[2, :, :, :, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 2, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 2, i, 1] = self.particles[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
+            X[:, :, :, 2, i, 2] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 2, i, 3] = self.particles[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
             #Tet 3: P0 P7 P3 P1 [000, 111, 011, 001]
-            X[3, :, :, :, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[3, :, :, :, i, 1] = self.particles[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
-            X[3, :, :, :, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
-            X[3, :, :, :, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 3, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 3, i, 1] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 3, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
+            X[:, :, :, 3, i, 3] = self.particles[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
             #Tet 4: P0 P7 P2 P3 [000, 111, 010, 011]
-            X[4, :, :, :, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[4, :, :, :, i, 1] = self.particles[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
-            X[4, :, :, :, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
-            X[4, :, :, :, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 4, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 4, i, 1] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 4, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
+            X[:, :, :, 4, i, 3] = self.particles[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
             #Tet 5: P0 P6 P2 P7 [000, 110, 010, 111]
-            X[5, :, :, :, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[5, :, :, :, i, 1] = self.particles[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
-            X[5, :, :, :, i, 2] = self.particles[i, 2:self.width+2, 2:self.height+2, 1:self.depth+1] #P6 110
-            X[5, :, :, :, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
-        deformationF = torch.matmul(X, self.GTranspose[i])
+            X[:, :, :, 5, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 5, i, 1] = self.particles[i, 2:self.width+2, 2:self.height+2, 1:self.depth+1] #P6 110
+            X[:, :, :, 5, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
+            X[:, :, :, 5, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+        deformationF = torch.matmul(X, self.GTranspose)
+
         z = torch.svd(deformationF)
-        print(z.U.shape)
-        print(z.S.shape)
-        print(z.V.shape)
+        u = z.U
+        s = z.S
+        vt = torch.transpose(z.V, 4,5)
+        u_det = torch.det(u)
+        vt_det = torch.det(vt)
+        # det of u & v less than 0
+        u_mask = torch.where(u_det < 0, torch.tensor(-1.0), torch.tensor(1.0))
+        v_mask = torch.where(vt_det < 0, torch.tensor(-1.0), torch.tensor(1.0))
+        # uplusv = u_mask + v_mask
+        uv_mask = torch.where((u_det < 0) & (vt_det < 0), torch.tensor(-1.0), torch.tensor(1.0))
+        # only det of u less than 0
+        us_mask = torch.where((u_det < 0) & (vt_det > 0), torch.tensor(-1.0), torch.tensor(1.0))
+        # only det of v less than 0
+        vs_mask = torch.where((u_det > 0) & (vt_det < 0), torch.tensor(-1.0), torch.tensor(1.0))
+
+        # print(torch.sum(us_mask * vs_mask))
+        
+        for i in range(0, 3):
+            u[:, :, :, :, i, 2] = u[:, :, :, :, i, 2] * uv_mask
+            vt[:, :, :, :, 2, i] = vt[:, :, :, :, 2, i] * uv_mask
+
+        for i in range(0, 3):
+            u[:, :, :, :, i, 2] = u[:, :, :, :, i, 2] * us_mask
+        s[:, :, :, :, 2] = s[:, :, :, :, 2] * us_mask
+
+        for i in range(0, 3):
+            vt[:, :, :, :, 2, i] = vt[:, :, :, :, 2, i] * vs_mask
+        s[:, :, :, :, 2] = s[:, :, :, :, 2] * vs_mask
+
+        deformationF = torch.matmul(u, torch.matmul(torch.diag_embed(s), vt))
+        R = torch.matmul(u, vt)
+
+        P = 2 * self.mu * torch.sub(deformationF, R)
+        G = torch.transpose(self.GTranspose, 4, 5)
+        Q = torch.matmul(P, G)
+        for i in range(0,3):
+            for j in range(0,4):
+                Q[:,:,:,:,i,j] = Q[:,:,:,:,i,j] * (-1.0 * self.restVolume)
+        for i in range(0, 3):
+            #Tet 0: P0 P4 P6 P7 [000, 100, 110, 111]
+            f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 0, i , 0] #P0 000
+            f[i, 1:self.width+1, 0:self.height, 0:self.depth] += Q[:, :, :, 0, i , 1] #P4 100
+            f[i, 1:self.width+1, 1:self.height+1, 0:self.depth] += Q[:, :, :, 0, i , 2] #P6 110
+            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 0, i , 3] #P7 111
+            #Tet 1: P0 P4 P7 P5 [000, 100, 111, 101]
+            f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 1, i , 0] #P0 000
+            f[i, 1:self.width+1, 0:self.height, 0:self.depth] += Q[:, :, :, 1, i , 1] #P4 100
+            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 1, i , 2] #P7 111
+            f[i, 1:self.width+1, 0:self.height, 1:self.depth+1] += Q[:, :, :, 1, i , 3] #P5 101
+            #Tet 2: P0 P5 P7 P1 [000, 101, 111, 001]
+            f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 2, i , 0] #P0 000
+            f[i, 1:self.width+1, 0:self.height, 1:self.depth+1] += Q[:, :, :, 2, i , 1] #P5 101
+            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 2, i , 2] #P7 111
+            f[i, 0:self.width, 0:self.height, 1:self.depth+1] += Q[:, :, :, 2, i , 3] #P1 001
+            #Tet 3: P0 P7 P3 P1 [000, 111, 011, 001]
+            f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 3, i , 0] #P0 000
+            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 3, i , 1] #P7 111
+            f[i, 0:self.width, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 3, i , 2] #P3 011
+            f[i, 0:self.width, 0:self.height, 1:self.depth+1] += Q[:, :, :, 3, i , 3] #P1 001
+            #Tet 4: P0 P7 P2 P3 [000, 111, 010, 011]
+            f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 4, i , 0] #P0 000
+            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 4, i , 1] #P7 111
+            f[i, 0:self.width, 1:self.height+1, 0:self.depth] += Q[:, :, :, 4, i , 2] #P2 010
+            f[i, 0:self.width, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 4, i , 3] #P3 011
+            #Tet 5: P0 P6 P2 P7 [000, 110, 010, 111]
+            f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 5, i , 0] #P0 000
+            f[i, 1:self.width+1, 1:self.height+1, 0:self.depth] += Q[:, :, :, 5, i , 1] #P6 110
+            f[i, 0:self.width, 1:self.height+1, 0:self.depth] += Q[:, :, :, 5, i , 2] #P2 010
+            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 5, i , 3] #P7 111
+        # print("Done computing RHS")
         return
 
-    def computeElasticForce(self, forceTensor):
-        self.computeElasticForceWithoutLoop(forceTensor)
-        sys.exit(0)
+    def computeElasticForceWithLoop(self, forceTensor):
         for i in range(0, self.numMeshElements):
             X = torch.zeros(size=[3, 4], dtype = torch.float32)
             for j in range(0, self.dimension+1):

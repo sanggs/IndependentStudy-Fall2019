@@ -9,7 +9,7 @@ class CGSolver:
         self.s = s
         self.r = r
         self.width = width
-        self.height = height 
+        self.height = height
         self.depth = depth
         self.maxIterations = numIteration
         self.minConvergenceNorm = torch.tensor(minConvergenceNorm, dtype = torch.float32)
@@ -37,8 +37,7 @@ class CGSolver:
             convergenceNorm = torch.sqrt(torch.max(torch.sum(self.r*self.r, dim = 0)))
             # print("printing convergence norm "+str(convergenceNorm))
             if convergenceNorm < self.minConvergenceNorm:
-                print("Convergence Norm less than threshold")
-                print(i)
+                print("Convergence Norm less than threshold: "+str(convergenceNorm)+ " after " + str(i) + " iterations")
                 return
             if i > self.maxIterations:
                 print("Ideally should not have come here")
@@ -50,7 +49,7 @@ class CGSolver:
                 self.s[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2] = ((rho/rhoOld) * self.s[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2]) + self.r
             self.multiplyWithA(self.s, self.q)
             self.projectToZero(self.q)
-            
+
             sDotq = torch.sum(self.s[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2]*self.q)
             # print("Iteration: "+str(i)+" sDotq: "+str(sDotq))
             if sDotq <= 0:
@@ -60,7 +59,7 @@ class CGSolver:
             self.x[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2] = alpha * self.s[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2] + self.x[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2]
             self.r = -alpha * self.q + self.r
             rhoOld = rho
-            
+
         print("Ended after "+str(i)+ " iterations")
         print(convergenceNorm)
         return
