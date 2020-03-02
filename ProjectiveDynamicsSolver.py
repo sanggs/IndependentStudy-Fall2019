@@ -25,18 +25,18 @@ class ProjectiveDynamicsSolver:
         self.interiorCellMeshElements = None
 
         self.setParticles(particles, particleIndex)
-        
+
         self.setMeshElements(meshElements)
-        
+
         if(interiorCellMeshElements):
             self.setInteriorCellMeshElements(interiorCellMeshElements)
-        
+
         self.latticeMeshObject = None
         if(lm):
             self.registerLatticeMeshObject(lm)
-        
+
         self.timeMeasured = [] # timeMeasured is a list of tuples
-        
+
         startTime = time.time() # start the timer
         self.initialiseUndeformedConfiguration()
         self.timeMeasured.append(tuple(['initialiseUndeformedConfiguration', time.time()-startTime])) # end the timer, add to the list
@@ -78,12 +78,12 @@ class ProjectiveDynamicsSolver:
         self.dMInverse = torch.zeros([self.numMeshElements, 3, 3], dtype=torch.float32)
         #Volume
         self.restVolume = torch.zeros(size = [6, self.width, self.height, self.depth], dtype=torch.float32)
-        
+
         # for i in range(0, self.numMeshElements):
         #     #we know meshElements will have 4 elements
         #     for j in range(0, self.dimension+1):
         #         X[i, :, j] = self.particles[:, self.meshElements[i][j][0], self.meshElements[i][j][1], self.meshElements[i][j][2]]
-        
+
         #access mesh elements without loop
         X = torch.zeros(size = [self.width, self.height, self.depth, 6, self.dimension, self.dimension+1], dtype=torch.float32)
         for i in range(0, 3):
@@ -95,27 +95,27 @@ class ProjectiveDynamicsSolver:
             #Tet 1: P0 P4 P7 P5 [000, 100, 111, 101]
             X[:, :, :, 1, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
             X[:, :, :, 1, i, 1] = self.particles[i, 2:self.width+2, 1:self.height+1, 1:self.depth+1] #P4 100
-            X[:, :, :, 1, i, 2] = self.particles[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
-            X[:, :, :, 1, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 1, i, 2] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 1, i, 3] = self.particles[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
             #Tet 2: P0 P5 P7 P1 [000, 101, 111, 001]
             X[:, :, :, 2, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[:, :, :, 2, i, 1] = self.particles[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
-            X[:, :, :, 2, i, 2] = self.particles[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
-            X[:, :, :, 2, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 2, i, 1] = self.particles[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
+            X[:, :, :, 2, i, 2] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 2, i, 3] = self.particles[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
             #Tet 3: P0 P7 P3 P1 [000, 111, 011, 001]
             X[:, :, :, 3, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[:, :, :, 3, i, 1] = self.particles[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
+            X[:, :, :, 3, i, 1] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
             X[:, :, :, 3, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
-            X[:, :, :, 3, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 3, i, 3] = self.particles[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
             #Tet 4: P0 P7 P2 P3 [000, 111, 010, 011]
             X[:, :, :, 4, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[:, :, :, 4, i, 1] = self.particles[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
-            X[:, :, :, 4, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
-            X[:, :, :, 4, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 4, i, 1] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 4, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
+            X[:, :, :, 4, i, 3] = self.particles[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
             #Tet 5: P0 P6 P2 P7 [000, 110, 010, 111]
             X[:, :, :, 5, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[:, :, :, 5, i, 1] = self.particles[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
-            X[:, :, :, 5, i, 2] = self.particles[i, 2:self.width+2, 2:self.height+2, 1:self.depth+1] #P6 110
+            X[:, :, :, 5, i, 1] = self.particles[i, 2:self.width+2, 2:self.height+2, 1:self.depth+1] #P6 110
+            X[:, :, :, 5, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
             X[:, :, :, 5, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
 
         dM = torch.matmul(X, builder)
@@ -143,10 +143,12 @@ class ProjectiveDynamicsSolver:
         self.timeMeasured.append(tuple(['preComputeStencilMatrix', time.time()-startTime])) # end the timer, add to the list
 
     def printStencil(self):
-        for i in range(0, 2):
-            for j in range(0, 2):
-                for k in range(0, 2):
-                    print(self.stencil1[i][j][k])
+        for i in range(0, self.width+1):
+            for j in range(0, self.height+1):
+                for k in range(0, self.depth+1):
+                    print(str(i) + " " + str(j) + " " + str(k))
+                    print(self.stencil[i][j][k])
+        sys.exit(0)
         return
 
     def precomputeStencilMatrix(self):
@@ -157,7 +159,7 @@ class ProjectiveDynamicsSolver:
         GtG = torch.matmul(self.GTranspose, G)
         # print(time.time()-startTime)
         self.timeMeasured.append(tuple(['gTransposeGComputation', time.time()-startTime])) # end the timer, add to the list
-        
+
         startTime = time.time()
         self.stencil1 = torch.zeros(2, 2, 2, self.dimension, self.dimension, self.dimension)
         cellIndex = torch.tensor(self.latticeMeshObject.interiorActiveCell, dtype=torch.int64)
@@ -166,7 +168,8 @@ class ProjectiveDynamicsSolver:
         for i in range(0, 6):
             # print(meshElements[i])
             w = 2 * self.mu * self.restVolume[cellIndex[0], cellIndex[1], cellIndex[2], i] * GtG[cellIndex[0], cellIndex[1], cellIndex[2], i]
-            # print(w)
+            print(i)
+            print(w)
             #diagonals
             for j in range(0, self.dimension+1):
                 index = meshElements[i][j] - cellIndex
@@ -184,7 +187,6 @@ class ProjectiveDynamicsSolver:
                     index = meshElements[i][col] - cellIndex
                     self.stencil1[index[0], index[1], index[2], d[0], d[1], d[2]] += w[col][row]
                     # print(self.stencil1[index[0]-1, index[1]-1, index[2]-1, d[0], d[1], d[2]])
-        
         # print(time.time()-startTime)
         self.timeMeasured.append(tuple(['computingWeightsForOneCell', time.time()-startTime])) # end the timer, add to the list
         startTime = time.time()
@@ -235,35 +237,35 @@ class ProjectiveDynamicsSolver:
         X = torch.zeros(size = [self.width, self.height, self.depth, 6, self.dimension, self.dimension+1], dtype=torch.float32)
         for i in range(0, 3):
             #Tet 0: P0 P4 P6 P7 [000, 100, 110, 111]
-            X[:, :, :, 0, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[:, :, :, 0, i, 1] = self.particles[i, 2:self.width+2, 1:self.height+1, 1:self.depth+1] #P4 100
-            X[:, :, :, 0, i, 2] = self.particles[i, 2:self.width+2, 2:self.height+2, 1:self.depth+1] #P6 110
-            X[:, :, :, 0, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 0, i, 0] = p[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 0, i, 1] = p[i, 2:self.width+2, 1:self.height+1, 1:self.depth+1] #P4 100
+            X[:, :, :, 0, i, 2] = p[i, 2:self.width+2, 2:self.height+2, 1:self.depth+1] #P6 110
+            X[:, :, :, 0, i, 3] = p[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
             #Tet 1: P0 P4 P7 P5 [000, 100, 111, 101]
-            X[:, :, :, 1, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[:, :, :, 1, i, 1] = self.particles[i, 2:self.width+2, 1:self.height+1, 1:self.depth+1] #P4 100
-            X[:, :, :, 1, i, 2] = self.particles[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
-            X[:, :, :, 1, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 1, i, 0] = p[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 1, i, 1] = p[i, 2:self.width+2, 1:self.height+1, 1:self.depth+1] #P4 100
+            X[:, :, :, 1, i, 2] = p[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 1, i, 3] = p[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
             #Tet 2: P0 P5 P7 P1 [000, 101, 111, 001]
-            X[:, :, :, 2, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[:, :, :, 2, i, 1] = self.particles[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
-            X[:, :, :, 2, i, 2] = self.particles[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
-            X[:, :, :, 2, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 2, i, 0] = p[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 2, i, 1] = p[i, 2:self.width+2, 1:self.height+1, 2:self.depth+2] #P5 101
+            X[:, :, :, 2, i, 2] = p[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 2, i, 3] = p[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
             #Tet 3: P0 P7 P3 P1 [000, 111, 011, 001]
-            X[:, :, :, 3, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[:, :, :, 3, i, 1] = self.particles[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
-            X[:, :, :, 3, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
-            X[:, :, :, 3, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 3, i, 0] = p[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 3, i, 1] = p[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 3, i, 2] = p[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
+            X[:, :, :, 3, i, 3] = p[i, 1:self.width+1, 1:self.height+1, 2:self.depth+2] #P1 001
             #Tet 4: P0 P7 P2 P3 [000, 111, 010, 011]
-            X[:, :, :, 4, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[:, :, :, 4, i, 1] = self.particles[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
-            X[:, :, :, 4, i, 2] = self.particles[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
-            X[:, :, :, 4, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 4, i, 0] = p[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 4, i, 1] = p[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 4, i, 2] = p[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
+            X[:, :, :, 4, i, 3] = p[i, 1:self.width+1, 2:self.height+2, 2:self.depth+2] #P3 011
             #Tet 5: P0 P6 P2 P7 [000, 110, 010, 111]
-            X[:, :, :, 5, i, 0] = self.particles[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
-            X[:, :, :, 5, i, 1] = self.particles[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
-            X[:, :, :, 5, i, 2] = self.particles[i, 2:self.width+2, 2:self.height+2, 1:self.depth+1] #P6 110
-            X[:, :, :, 5, i, 3] = self.particles[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
+            X[:, :, :, 5, i, 0] = p[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] #P0 000
+            X[:, :, :, 5, i, 1] = p[i, 2:self.width+2, 2:self.height+2, 1:self.depth+1] #P6 110
+            X[:, :, :, 5, i, 2] = p[i, 1:self.width+1, 2:self.height+2, 1:self.depth+1] #P2 010
+            X[:, :, :, 5, i, 3] = p[i, 2:self.width+2, 2:self.height+2, 2:self.depth+2] #P7 111
         deformationF = torch.matmul(X, self.GTranspose)
         P = 2 * self.mu * deformationF
         G = torch.transpose(self.GTranspose, 4, 5)
@@ -271,7 +273,6 @@ class ProjectiveDynamicsSolver:
         for i in range(0,3):
             for j in range(0,4):
                 Q[:,:,:,:,i,j] = Q[:,:,:,:,i,j] * self.restVolume
-        
         for i in range(0, 3):
             #Tet 0: P0 P4 P6 P7 [000, 100, 110, 111]
             f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 0, i , 0] #P0 000
@@ -281,27 +282,27 @@ class ProjectiveDynamicsSolver:
             #Tet 1: P0 P4 P7 P5 [000, 100, 111, 101]
             f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 1, i , 0] #P0 000
             f[i, 1:self.width+1, 0:self.height, 0:self.depth] += Q[:, :, :, 1, i , 1] #P4 100
-            f[i, 1:self.width+1, 0:self.height, 1:self.depth+1] += Q[:, :, :, 1, i , 2] #P5 101
-            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 1, i , 3] #P7 111
+            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 1, i , 2] #P7 111
+            f[i, 1:self.width+1, 0:self.height, 1:self.depth+1] += Q[:, :, :, 1, i , 3] #P5 101
             #Tet 2: P0 P5 P7 P1 [000, 101, 111, 001]
             f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 2, i , 0] #P0 000
-            f[i, 0:self.width, 0:self.height, 1:self.depth+1] += Q[:, :, :, 2, i , 1] #P1 001
-            f[i, 1:self.width+1, 0:self.height, 1:self.depth+1] += Q[:, :, :, 2, i , 2] #P5 101
-            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 2, i , 3] #P7 111
+            f[i, 1:self.width+1, 0:self.height, 1:self.depth+1] += Q[:, :, :, 2, i , 1] #P5 101
+            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 2, i , 2] #P7 111
+            f[i, 0:self.width, 0:self.height, 1:self.depth+1] += Q[:, :, :, 2, i , 3] #P1 001
             #Tet 3: P0 P7 P3 P1 [000, 111, 011, 001]
             f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 3, i , 0] #P0 000
-            f[i, 0:self.width, 0:self.height, 1:self.depth+1] += Q[:, :, :, 3, i , 1] #P1 001
+            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 3, i , 1] #P7 111
             f[i, 0:self.width, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 3, i , 2] #P3 011
-            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 3, i , 3] #P7 111
+            f[i, 0:self.width, 0:self.height, 1:self.depth+1] += Q[:, :, :, 3, i , 3] #P1 001
             #Tet 4: P0 P7 P2 P3 [000, 111, 010, 011]
             f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 4, i , 0] #P0 000
-            f[i, 0:self.width, 1:self.height+1, 0:self.depth] += Q[:, :, :, 4, i , 1] #P2 010
-            f[i, 0:self.width, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 4, i , 2] #P3 011
-            f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 4, i , 3] #P7 111
+            f[i, 1:self.width+1, 1:self.height+1, 0:self.depth] += Q[:, :, :, 4, i , 1] #P7 111
+            f[i, 0:self.width, 1:self.height+1, 0:self.depth] += Q[:, :, :, 4, i , 2] #P2 010
+            f[i, 0:self.width, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 4, i , 3] #P3 011
             #Tet 5: P0 P6 P2 P7 [000, 110, 010, 111]
             f[i, 0:self.width, 0:self.height, 0:self.depth] += Q[:, :, :, 5, i , 0] #P0 000
-            f[i, 0:self.width, 1:self.height+1, 0:self.depth] += Q[:, :, :, 5, i , 1] #P2 010
-            f[i, 1:self.width+1, 1:self.height+1, 0:self.depth] += Q[:, :, :, 5, i , 2] #P6 110
+            f[i, 1:self.width+1, 1:self.height+1, 0:self.depth] += Q[:, :, :, 5, i , 1] #P6 110
+            f[i, 0:self.width, 1:self.height+1, 0:self.depth] += Q[:, :, :, 5, i , 2] #P2 010
             f[i, 1:self.width+1, 1:self.height+1, 1:self.depth+1] += Q[:, :, :, 5, i , 3] #P7 111
         # for i in range(0, self.numMeshElements):
         #     X = torch.zeros(size=[3, 4], dtype = torch.float32)
@@ -311,21 +312,20 @@ class ProjectiveDynamicsSolver:
         #     P = 2 * self.mu * deformationF
         #     Q = self.restVolume[i] * torch.mm(P, self.GTranspose[i].t())
         #     for j in range(0, 4):
-
-        # f[:, self.meshElements[i][j][0]-1, self.meshElements[i][j][1]-1, self.meshElements[i][j][2]-1] += Q[:, j]
+                # f[:, self.meshElements[i][j][0]-1, self.meshElements[i][j][1]-1, self.meshElements[i][j][2]-1] += Q[:, j]
         return
 
     def multiplyWithStencil(self, x, q):
         startTime = time.time() # start the timer
 
         q[:, :, :, :] = 0.0
-        
+
         x_start = 0
         y_start = 0
         z_start = 0
         x_end = self.width+1
         y_end = self.height+1
-        z_end = self.depth+1 
+        z_end = self.depth+1
         for c in range(0, 3):
             for di in range(0, 3):
                 for dj in range(0, 3):
@@ -360,7 +360,7 @@ class ProjectiveDynamicsSolver:
             elif torch.det(v) < 0:
                 v[:, 2] = -1 * v[:, 2]
             self.R[i] = torch.matmul(u, v.t())
-    
+
     def computeElasticForceWithoutLoop(self, forceTensor):
         #access mesh elements without loop
         X = torch.zeros(size = [6, self.width, self.height, self.depth, self.dimension, self.dimension+1], dtype=torch.float32)
@@ -448,7 +448,7 @@ class ProjectiveDynamicsSolver:
         self.timeMeasured.append(tuple(['resetConstrainedParticles', time.time()-startTime])) # end the timer, add to the list
         #print("printing rhs")
         #print(rhs)
-        
+
         startTime = time.time() # start the timer
         cg = CGSolver(particles=dx, rhs=rhs, q=q, s=s, r=r, numIteration=250, minConvergenceNorm=1e-5, width=self.width, height=self.height, depth=self.depth, femObject=self)
         #solve
@@ -481,10 +481,10 @@ class ProjectiveDynamicsSolver:
                 r = (-2 * torch.rand(self.dimension, self.width+1, self.height+1, self.depth+1)) + 1.0
                 self.particles[:, 1:self.width+2, 1:self.height+2, 1:self.depth+2] += r
                 # self.latticeMeshObject.writeToFile(i, self.particles)
-            startTime = time.time() # start the timer 
+            startTime = time.time() # start the timer
             self.pdSimulation()
             self.timeMeasured.append(tuple(['pdSimulation', time.time()-startTime])) # end the timer, add to the list
             # self.latticeMeshObject.writeToFile(i, self.particles)
 
     def getTimeMeasured(self):
-        return self.timeMeasured   
+        return self.timeMeasured

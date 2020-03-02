@@ -78,11 +78,11 @@ class LatticeMesh:
                     # print(self.interiorActiveCell)
                     # self.interiorCellMeshElements.append(len(self.meshElements)-6)
                     self.interiorCellMeshElements.append([pCell[0], pCell[4], pCell[6], pCell[7]])
-                    self.interiorCellMeshElements.append([pCell[0], pCell[4], pCell[5], pCell[7]])
-                    self.interiorCellMeshElements.append([pCell[0], pCell[1], pCell[5], pCell[7]])
-                    self.interiorCellMeshElements.append([pCell[0], pCell[1], pCell[3], pCell[7]])
-                    self.interiorCellMeshElements.append([pCell[0], pCell[2], pCell[3], pCell[7]])
-                    self.interiorCellMeshElements.append([pCell[0], pCell[2], pCell[6], pCell[7]])
+                    self.interiorCellMeshElements.append([pCell[0], pCell[4], pCell[7], pCell[5]])
+                    self.interiorCellMeshElements.append([pCell[0], pCell[5], pCell[7], pCell[1]])
+                    self.interiorCellMeshElements.append([pCell[0], pCell[7], pCell[3], pCell[1]])
+                    self.interiorCellMeshElements.append([pCell[0], pCell[7], pCell[2], pCell[3]])
+                    self.interiorCellMeshElements.append([pCell[0], pCell[6], pCell[2], pCell[7]])
         self.meshElements = torch.tensor(self.meshElements, dtype=torch.int64) + 1
         # self.interiorCellMeshElements = torch.tensor(self.interiorCellMeshElements, dtype=torch.int64) + 1
         # self.interiorActiveCell = torch.tensor(self.interiorActiveCell, dtype=torch.int64)
@@ -178,8 +178,8 @@ if __name__ == '__main__':
 
     #test the accuracy of the precomputed stencil
     testStencil()
-    
+
     for i in range(1, 50):
         pdSolver.simulateFrame(i)
-    
+
     recordTimeTaken(simProperties["timeMeasures"], pdSolver.getTimeMeasured())
